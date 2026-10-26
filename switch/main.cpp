@@ -104,7 +104,7 @@ toml::table Table() {
 Settings DefaultSettings() {
     Settings s;
     s.render_percent = 100;
-    s.fps_cap = 30;
+    s.fps_cap = 60;
     s.vsync = true;
     s.xbox_720p = true;  // as MVP's own mvp05-settings.toml ships
     gpu::g_draw_copy = true;  // the vertices copied as each draw is made: no per-draw wait (validated on the PC)

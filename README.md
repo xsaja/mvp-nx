@@ -25,7 +25,7 @@ TGP482 y de la capa de Switch de **[BLACK-NX-PORT](https://github.com/gerisson19
 
 - Arranque, vídeos, menús, música y sonido.
 - Partidos de exhibición completos, probados en consola.
-- 30 fps estables por defecto; con `fps_cap = 60`, entre 45 y 57 fps.
+- Límite de 60 fps por defecto: en partido va entre 45 y 57 fps. Con `fps_cap = 30`, 30 fps totalmente estables.
 - 1280×720 en portátil y 1920×1080 en la base, con cambio automático.
 - Hasta 4 mandos, con vibración.
 - FPS y resolución en Status Monitor / Horizon OC Monitor, y modo portátil/base con ReverseNX-RT (necesitan SaltyNX).
@@ -85,7 +85,7 @@ Están en `mvp05-settings.toml`, junto al NRO, explicados dentro del propio arch
 
 | Ajuste | Qué hace |
 |---|---|
-| `fps_cap = 60` | Quita el límite de 30 fps (va entre 45 y 57). |
+| `fps_cap = 30` | 30 fps totalmente estables, en vez del límite de 60 (que en partido da 45–57). |
 | `render_percent = 75` | Resolución interna más baja, por si va lento. |
 | `cpu_mhz`, `gpu_mhz`, `mem_mhz` | Sube los relojes mientras se juega (topes oficiales: 1785, 921, 1600). Déjalos en 0 si usas Horizon OC o sys-clk. |
 | `buttons_by_name = true` | Botones por letra en vez de por posición. |

@@ -41,7 +41,7 @@ if(EXISTS ${GEN}/x86_func_mapping.cpp)
         list(APPEND GEN_SOURCES ${GEN}/x86_recomp.${i}.cpp)
     endforeach()
 endif()
-file(CONFIGURE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/build_info.h CONTENT "#define MVP_NX_BUILD \"switch-0.1.0\"\n")
+file(CONFIGURE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/build_info.h CONTENT "#define MVP_NX_BUILD \"switch-0.1.1\"\n")
 
 # glslang with its HLSL front end (the SDK's shaders are HLSL), built here for the Switch
 set(ENABLE_OPT OFF CACHE BOOL "" FORCE)
@@ -114,7 +114,7 @@ if(HAVE_GEN)
         -Wl,--end-group)
 
     nx_generate_nacp(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/mvp05.nacp
-        NAME "MVP Baseball 2005" AUTHOR "mvp-nx" VERSION "0.1.0")
+        NAME "MVP Baseball 2005" AUTHOR "mvp-nx" VERSION "0.1.1")
     set(ICON ${HOST}/icon.jpg)
     if(EXISTS ${ICON})
         nx_create_nro(mvp05 NACP ${CMAKE_CURRENT_BINARY_DIR}/mvp05.nacp ICON ${ICON})

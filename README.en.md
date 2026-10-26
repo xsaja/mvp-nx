@@ -25,7 +25,7 @@ TGP482's **[XboxXBE-Recomp](https://github.com/TGP482/XboxXBE-Recomp)** recompil
 
 - Boot, movies, menus, music and sound.
 - Full exhibition games, tested on the console.
-- A steady 30 fps by default, or 45–57 fps with `fps_cap = 60`.
+- A 60 fps cap by default: 45–57 fps in a game. With `fps_cap = 30`, a fully steady 30 fps.
 - 1280×720 handheld and 1920×1080 docked, switching on its own.
 - Up to 4 controllers, with rumble.
 - FPS and resolution in Status Monitor / Horizon OC Monitor, and handheld/docked mode from ReverseNX-RT (these need
@@ -90,7 +90,7 @@ The settings are in `mvp05-settings.toml`, next to the NRO. The file explains ea
 
 | Setting | Effect |
 |---|---|
-| `fps_cap = 60` | Lifts the 30 fps cap (the game then runs at 45–57 fps). |
+| `fps_cap = 30` | A fully steady 30 fps instead of the 60 cap (45–57 fps in a game). |
 | `render_percent = 75` | Lowers the internal resolution, in case the game is slow. |
 | `cpu_mhz`, `gpu_mhz`, `mem_mhz` | Raises the clocks while the game runs (official caps: 1785, 921, 1600). Leave them at 0 if you use Horizon OC or sys-clk. |
 | `buttons_by_name = true` | Maps the buttons by letter instead of by position. |

@@ -6,9 +6,10 @@
 # Resolucion interna en % de la altura de la pantalla (100 = nativa). Bajalo (por ejemplo 75) si va lento.
 render_percent = 100
 
-# Fotogramas por segundo maximos (0 = sin limite). 30 por defecto; prueba 60 si quieres: el log
-# escribe cada 10 s los fps reales (lineas "perf:").
-fps_cap = 30
+# Fotogramas por segundo maximos (0 = sin limite). 60 por defecto: en partido va entre 45 y 57.
+# Pon 30 si prefieres una imagen totalmente estable. El log escribe cada 10 s los fps reales
+# (lineas "perf:").
+fps_cap = 60
 
 # Sincronia vertical (evita cortes en la imagen).
 vsync = true
