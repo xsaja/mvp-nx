@@ -71,19 +71,20 @@ Copy with a card reader if you can: some MTP tools skip folders without saying s
 
 ## Controls
 
-The face buttons map **by position**, as on an Xbox pad, which is how MVP throws to the bases:
+The face buttons map **by letter**: press the letter the game shows (A confirms and B goes back, as on the Switch).
 
 | Switch | Xbox | On defense |
 |---|---|---|
-| B (bottom) | A | home |
-| A (right) | B | first |
-| X (top) | Y | second |
-| Y (left) | X | third |
-| R / L | black / white | |
-| ZL / ZR | triggers | |
+| A | A | home |
+| B | B | first |
+| Y | Y | second |
+| X | X | third |
+| L / R | L / R triggers (as the game shows them) | |
+| ZL / ZR | white / black | |
 | + / − | Start / Back | |
 
-To map the buttons by letter instead (Switch A = Xbox A), set `buttons_by_name = true` in the settings.
+To map A/B/X/Y by position instead, as on an Xbox pad (bottom B = Xbox A), set `buttons_by_name = false`: the
+game's base diamond then matches the shape of the buttons.
 
 ## Settings
 
@@ -95,7 +96,7 @@ The settings are in `mvp05-settings.toml`, next to the NRO. The file explains ea
 | `renderer = "vulkan"` | Goes back to the Vulkan (NVK) renderer instead of deko3d, if something looks wrong. |
 | `render_percent = 75` | Lowers the internal resolution, in case the game is slow. |
 | `cpu_mhz`, `gpu_mhz`, `mem_mhz` | Raises the clocks while the game runs (official caps: 1785, 921, 1600). Leave them at 0 if you use Horizon OC or sys-clk. |
-| `buttons_by_name = true` | Maps the buttons by letter instead of by position. |
+| `buttons_by_name = false` | Maps the buttons by position (as on an Xbox pad) instead of by letter. |
 | `saltynx = false` | Turns off the link with the console overlays. |
 
 ## Problems

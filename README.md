@@ -66,19 +66,20 @@ herramientas MTP se saltan carpetas sin avisar.
 
 ## Controles
 
-Los botones van **por posición**, como en un mando de Xbox, que es como MVP lanza a las bases:
+Los botones van **por letra**: se pulsa la letra que muestra el juego (A acepta y B vuelve, como en la Switch).
 
 | Switch | Xbox | En defensa |
 |---|---|---|
-| B (abajo) | A | home |
-| A (derecha) | B | primera |
-| X (arriba) | Y | segunda |
-| Y (izquierda) | X | tercera |
-| R / L | negro / blanco | |
-| ZL / ZR | gatillos | |
+| A | A | home |
+| B | B | primera |
+| Y | Y | segunda |
+| X | X | tercera |
+| L / R | gatillos L / R (los que muestra el juego) | |
+| ZL / ZR | blanco / negro | |
 | + / − | Start / Back | |
 
-Con `buttons_by_name = true` en los ajustes, los botones van por letra (A de Switch = A de Xbox).
+Con `buttons_by_name = false` en los ajustes, A/B/X/Y van por posición, como en un mando de Xbox (B abajo = A de
+Xbox): así el diamante de bases del juego coincide con la forma de los botones.
 
 ## Ajustes
 
@@ -90,7 +91,7 @@ Están en `mvp05-settings.toml`, junto al NRO, explicados dentro del propio arch
 | `renderer = "vulkan"` | Vuelve al motor gráfico Vulkan (NVK) en vez de deko3d, si algo se ve mal. |
 | `render_percent = 75` | Resolución interna más baja, por si va lento. |
 | `cpu_mhz`, `gpu_mhz`, `mem_mhz` | Sube los relojes mientras se juega (topes oficiales: 1785, 921, 1600). Déjalos en 0 si usas Horizon OC o sys-clk. |
-| `buttons_by_name = true` | Botones por letra en vez de por posición. |
+| `buttons_by_name = false` | Botones por posición (como un mando de Xbox) en vez de por letra. |
 | `saltynx = false` | Desactiva la conexión con los overlays. |
 
 ## Problemas
