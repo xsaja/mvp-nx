@@ -56,6 +56,13 @@ set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 set(CMAKE_DISABLE_PRECOMPILE_HEADERS ON)
 add_subdirectory(${THIRD}/glslang ${CMAKE_CURRENT_BINARY_DIR}/glslang EXCLUDE_FROM_ALL)
 add_subdirectory(${THIRD}/tomlplusplus ${CMAKE_CURRENT_BINARY_DIR}/tomlplusplus EXCLUDE_FROM_ALL)
+# the deko3d renderer: the SPIR-V the shaders compile to as GLSL (SPIRV-Cross), and uam, which makes it DKSH
+add_subdirectory(${THIRD}/uam ${CMAKE_CURRENT_BINARY_DIR}/uam EXCLUDE_FROM_ALL)
+set(SPVC ${THIRD}/SPIRV-Cross)
+add_library(spirv_cross_glsl STATIC ${SPVC}/spirv_cross.cpp ${SPVC}/spirv_parser.cpp ${SPVC}/spirv_cross_parsed_ir.cpp
+                                    ${SPVC}/spirv_cfg.cpp ${SPVC}/spirv_glsl.cpp)
+target_include_directories(spirv_cross_glsl PUBLIC ${SPVC})
+target_compile_options(spirv_cross_glsl PRIVATE -O2 -w)
 set(IMGUI_SOURCES ${THIRD}/imgui/imgui.cpp ${THIRD}/imgui/imgui_draw.cpp ${THIRD}/imgui/imgui_tables.cpp
     ${THIRD}/imgui/imgui_widgets.cpp ${THIRD}/imgui/backends/imgui_impl_vulkan.cpp)
 
@@ -68,7 +75,7 @@ file(GLOB SWITCH_SOURCES CONFIGURE_DEPENDS ${HOST}/*.cpp)
 set(HOST_SOURCES ${RUNTIME_SOURCES} ${GAME_HOST_SOURCES} ${SWITCH_SOURCES})
 
 set(HOST_INCLUDES ${HOST}/compat ${SDK}/harness/compat ${HOST} ${GAME} ${SDK}/runtime ${GEN} ${CMAKE_CURRENT_BINARY_DIR}
-    ${THIRD}/glslang ${VULKAN_INCLUDE})
+    ${THIRD}/glslang ${VULKAN_INCLUDE} ${THIRD}/SPIRV-Cross ${THIRD}/uam)
 # x86 chars are signed, as the game's code and the runtime were written for
 set(HOST_OPTIONS -fno-strict-aliasing -fsigned-char)
 # every log level (info and debug lines too) in this release build, for console diagnostics
@@ -104,7 +111,7 @@ if(HAVE_GEN)
     list(REMOVE_ITEM NVK_ARCHIVES ${NVK_SDK}/lib/libvulkan.a)
     file(GLOB NVK_RLIBS ${NVK_SDK}/lib/*.rlib)
     target_link_libraries(mvp05 PRIVATE
-        tomlplusplus::tomlplusplus glslang glslang-default-resource-limits
+        tomlplusplus::tomlplusplus glslang glslang-default-resource-limits uamlib spirv_cross_glsl deko3d
         -Wl,--allow-multiple-definition
         -Wl,--start-group
         ${NVK_SDK}/lib/libvulkan.a
