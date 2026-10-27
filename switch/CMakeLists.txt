@@ -42,6 +42,9 @@ if(EXISTS ${GEN}/x86_func_mapping.cpp)
     endforeach()
 endif()
 file(CONFIGURE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/build_info.h CONTENT "#define MVP_NX_BUILD \"switch-0.1.1\"\n")
+# the time of each build, in the log's first line (which NRO ran)
+add_custom_target(build_stamp COMMAND ${CMAKE_COMMAND} -DOUT=${CMAKE_CURRENT_BINARY_DIR}/build_stamp.h
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/stamp.cmake BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/build_stamp.h)
 
 # glslang with its HLSL front end (the SDK's shaders are HLSL), built here for the Switch
 set(ENABLE_OPT OFF CACHE BOOL "" FORCE)
@@ -99,6 +102,7 @@ if(HAVE_GEN)
     set_source_files_properties(${GEN_SOURCES} PROPERTIES COMPILE_OPTIONS
         "-O2;-w;-fno-strict-aliasing;-fsigned-char;-ffp-contract=off")
     add_executable(mvp05 ${HOST_SOURCES} ${GEN_SOURCES} ${IMGUI_SOURCES} ${HOST}/switch_elf_stubs.c)
+    add_dependencies(mvp05 build_stamp)
     set_target_properties(mvp05 PROPERTIES OUTPUT_NAME mvp05)
     target_include_directories(mvp05 PRIVATE ${HOST_INCLUDES})
     target_include_directories(mvp05 SYSTEM PRIVATE ${THIRD}/imgui)

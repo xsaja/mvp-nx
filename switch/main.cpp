@@ -23,6 +23,7 @@
 
 #include "app/app.h"
 #include "build_info.h"
+#include "build_stamp.h"
 #include "core/input.h"
 #include "core/log.h"
 #include "gpu/backend.h"
@@ -168,7 +169,7 @@ void LogSystem() {
     std::time_t now = std::time(nullptr);
     char date[32] = {};
     std::strftime(date, sizeof(date), "%Y-%m-%d %H:%M:%S", std::localtime(&now));
-    LOGR("%ls (%s), %s, build %s, Switch", kGame.title, IMAGE_XBE, date, MVP_NX_BUILD);
+    LOGR("%ls (%s), %s, build %s (%s), Switch", kGame.title, IMAGE_XBE, date, MVP_NX_BUILD, MVP_NX_STAMP);
     LOGR("Path: %s", ExeDir().c_str());
     u64 total = 0, used = 0;
     svcGetInfo(&total, InfoType_TotalMemorySize, CUR_PROCESS_HANDLE, 0);
