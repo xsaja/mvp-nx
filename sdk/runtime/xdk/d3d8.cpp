@@ -179,6 +179,7 @@ void UpdateViewportConstants() {
     g_state.zscale = ZScale(g_state.zs);
     float hw = v.w * 0.5f, hh = v.h * 0.5f;
     if (!g_own_constants) {
+        gpu::TouchVsc(58, 2);
         g_state.vsc[58] = {hw, -hh, (v.max_z - v.min_z) * g_state.zscale, 0};
         g_state.vsc[59] = {v.x + g_state.ss_offset_x + hw, v.y + g_state.ss_offset_y + hh, v.min_z * g_state.zscale, 0};
     }
@@ -286,6 +287,7 @@ HLE_STDCALL(Direct3D_CreateDevice, 6) {
         if (kRenderThread) g_backend = gpu::CreateThreadedBackend(std::move(g_backend));
     }
     g_state = gpu::State{};
+    gpu::TouchAllState();
     g_state.viewport = {0, 0, w, h, 0.0f, 1.0f};
     SetDev(kDevRenderTarget, g_buffers[1]);
     SetDev(kDevDepth, g_depth);
@@ -575,6 +577,7 @@ HLE_STDCALL(D3DDevice_SetScreenSpaceOffset, 2) {
 
 HLE_FASTCALL(D3DDevice_SetRenderState_Simple, 0) {
     uint32_t method = a[0] & 0x1FFC, value = a[1];
+    gpu::TouchSimple(method >> 2);
     g_state.simple[method >> 2] = value;
     return 0;
 }
@@ -583,6 +586,7 @@ HLE_STDCALL(D3DDevice_SetRenderStateNotInline, 2) {
     uint32_t rs = a[0], v = a[1];
     if (rs < gpu::kRsDeferredFirst) {
         uint32_t method = R32(kSimpleEncode + rs * 4) & 0x1FFC;
+        gpu::TouchSimple(method >> 2);
         g_state.simple[method >> 2] = v;
         W32(kRenderState + rs * 4, v);  // titles read their states back from the library's table
     } else if (rs < gpu::kRsMax) {
@@ -825,7 +829,7 @@ HLE_STDCALL(D3DDevice_SetVertexShader, 1) {
             g_state.vs = it->second;
             // constants declared with the shader load when it is selected
             for (auto& [reg, v] : it->second->constants)
-                if (reg < 192) g_state.vsc[reg] = v;
+                if (reg < 192) gpu::TouchVsc(reg), g_state.vsc[reg] = v;
         } else {
             LOG_FIRST(8, "d3d: SetVertexShader with unknown handle %08X", h);
         }
@@ -835,24 +839,28 @@ HLE_STDCALL(D3DDevice_SetVertexShader, 1) {
 
 HLE_FASTCALL(D3DDevice_SetVertexShaderConstant1Fast, 0) {
     uint32_t reg = a[0];
+    gpu::TouchVsc(reg);
     if (reg < 192) std::memcpy(g_state.vsc[reg].data(), HostPtr(a[1]), 16);
     return 0;
 }
 
 HLE_FASTCALL(D3DDevice_SetVertexShaderConstant1, 0) {
     uint32_t reg = a[0];
+    gpu::TouchVsc(reg);
     if (reg < 192) std::memcpy(g_state.vsc[reg].data(), HostPtr(a[1]), 16);
     return 0;
 }
 
 HLE_FASTCALL(D3DDevice_SetVertexShaderConstant4, 0) {
     uint32_t reg = a[0], src = a[1];
+    gpu::TouchVsc(reg, 4);
     for (uint32_t i = 0; i < 4 && reg + i < 192; i++) std::memcpy(g_state.vsc[reg + i].data(), HostPtr(src + i * 16), 16);
     return 0;
 }
 
 HLE_FASTCALL(D3DDevice_SetVertexShaderConstantNotInlineFast, 1) {
     uint32_t reg = a[0], src = a[1], dwords = a[2];
+    gpu::TouchVsc(reg, dwords / 4);
     for (uint32_t i = 0; i < dwords / 4 && reg + i < 192; i++) std::memcpy(g_state.vsc[reg + i].data(), HostPtr(src + i * 16), 16);
     return 0;
 }
@@ -913,7 +921,10 @@ HLE_STDCALL(D3DDevice_SetPixelShader, 1) {
     }
     // the definition loads the combiner state like the XDK pushes it
     const uint32_t* d = g_state.ps->def;
-    auto put = [&](uint32_t method, uint32_t v) { g_state.simple[method >> 2] = v; };
+    auto put = [&](uint32_t method, uint32_t v) {
+        gpu::TouchSimple(method >> 2);
+        g_state.simple[method >> 2] = v;
+    };
     for (int i = 0; i < 8; i++) {
         put(gpu::kMPsAlphaInputs + i * 4, d[0 + i]);
         put(gpu::kMPsConstant0 + i * 4, d[10 + i]);
@@ -1021,7 +1032,7 @@ std::vector<uint32_t> g_im_inline;      // NV097_INLINE_ARRAY words across packe
 // at a physical address in the first 16 MB
 void ApplyVisibilityMethod(uint32_t m, uint32_t v) {
     constexpr uint32_t kReportAddressMask = 0xFFFFFF;
-    if (m == gpu::kMCountEnable) g_state.simple[gpu::kMCountEnable >> 2] = v;
+    if (m == gpu::kMCountEnable) gpu::TouchSimple(gpu::kMCountEnable >> 2), g_state.simple[gpu::kMCountEnable >> 2] = v;
     if (!g_backend) return;
     if (m == gpu::kMClearReport) g_backend->ClearReport();
     if (m == gpu::kMGetReport) g_backend->GetReport(mem::VirtualFromPhysical(v & kReportAddressMask));
@@ -1171,7 +1182,7 @@ HLE_STDCALL(D3DDevice_EndPush, 1) {
             if (m == kInlineArray) {
                 if (prim) vertices.push_back(v);
             } else if (m != kBeginEnd) {
-                if (m >> 2 < g_state.simple.size()) g_state.simple[m >> 2] = v;
+                if (m >> 2 < g_state.simple.size()) gpu::TouchSimple(m >> 2), g_state.simple[m >> 2] = v;
             } else if (v) {
                 prim = v;
                 vertices.clear();

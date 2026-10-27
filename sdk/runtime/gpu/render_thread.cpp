@@ -395,9 +395,21 @@ private:
         const uint8_t* now = reinterpret_cast<const uint8_t*>(&s);
         Cmd c{Op::State};
         size_t first = cur_->bytes.size();
+        // MVP05: blocks of simple and vsc nobody wrote since the last send are equal to what was sent
+        const bool track = g_track_state;
+        const size_t simple_at = At(s, &s.simple), simple_end = simple_at + sizeof(s.simple);
+        const size_t vsc_at = At(s, &s.vsc), vsc_end = vsc_at + sizeof(s.vsc);
         for (const Range& r : ranges_)
-            for (size_t off = r.off, end = r.off + r.len; off < end; off += 64)
+            for (size_t off = r.off, end = r.off + r.len; off < end; off += 64) {
+                if (track && off >= simple_at && off < simple_end) {
+                    size_t b = (off - simple_at) / 64;
+                    if (!((g_dirty_simple[b >> 6] >> (b & 63)) & 1)) continue;
+                } else if (track && off >= vsc_at && off < vsc_end) {
+                    if (!((g_dirty_vsc >> ((off - vsc_at) / 64)) & 1)) continue;
+                }
                 Delta(reinterpret_cast<const uint8_t*>(&sent_) + off, now + off, std::min<size_t>(64, end - off));
+            }
+        g_dirty_simple[0] = g_dirty_simple[1] = g_dirty_vsc = 0;
         std::array<uint32_t, 4> textures;
         for (size_t i = 0; i < 4; i++) textures[i] = Header(s.textures[i]);
         Delta(&sent_.textures, &textures, sizeof(textures));

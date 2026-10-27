@@ -187,4 +187,21 @@ struct State {
     float zscale = 16777215.0f;  // depth buffer units per 1.0
 };
 
+// MVP05: the 64 byte blocks of State::simple (8 KB) and State::vsc (3 KB) written since the render thread last sent
+// them. With g_track_state on, the render thread compares only those blocks instead of 11 KB on every draw; every
+// write to g_state.simple and g_state.vsc goes through TouchSimple / TouchVsc (d3d8.cpp, texture.cpp).
+inline bool g_track_state = false;
+inline uint64_t g_dirty_simple[2] = {~0ull, ~0ull};
+inline uint64_t g_dirty_vsc = ~0ull;
+inline void TouchSimple(uint32_t index) {
+    uint32_t b = (index >> 4) & 127;
+    g_dirty_simple[b >> 6] |= 1ull << (b & 63);
+}
+inline void TouchVsc(uint32_t reg, uint32_t n = 1) {
+    for (uint32_t r = reg; r < reg + n && r < 192; r++) g_dirty_vsc |= 1ull << (r >> 2);
+}
+inline void TouchAllState() {
+    g_dirty_simple[0] = g_dirty_simple[1] = g_dirty_vsc = ~0ull;
+}
+
 }  // namespace gpu

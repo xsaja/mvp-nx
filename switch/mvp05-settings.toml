@@ -23,6 +23,10 @@ deko3d_cached_upload = true
 # 1 = en cada frame, como antes). Si alguna textura tarda en actualizarse (marcador, letreros), prueba 1.
 texture_check_frames = 8
 
+# true (por defecto): el juego solo envia al motor grafico los estados que cambio desde el dibujo anterior
+# (menos trabajo para la CPU). Si algo se ve con colores, transparencias o posiciones raras, prueba false.
+state_tracking = true
+
 # Sincronia vertical (evita cortes en la imagen).
 vsync = true
 

@@ -96,6 +96,7 @@ toml::table Table() {
                   {"renderer", g_renderer},
                   {"deko3d_cached_upload", g_dk_cached_upload},
                   {"texture_check_frames", int64_t(g_texture_check_frames)},
+                  {"state_tracking", gpu::g_track_state},
                   {"render_spin_us", int64_t(gpu::g_render_spin_us.load())},
                   {"draw_copy", gpu::g_draw_copy.load()},
                   {"saltynx", g_saltynx},
@@ -121,6 +122,7 @@ Settings DefaultSettings() {
     s.vsync = true;
     s.xbox_720p = true;  // as MVP's own mvp05-settings.toml ships
     gpu::g_draw_copy = true;  // the vertices copied as each draw is made: no per-draw wait (validated on the PC)
+    gpu::g_track_state = true;  // the render thread compares only the render states and constants written
     gpu::g_reuse_constants = true;  // a draw with the previous draw's constants reuses their upload
     return s;
 }
@@ -147,6 +149,7 @@ void Load() {
     g_renderer = t["renderer"].value_or(g_renderer);
     if (g_renderer != "deko3d") g_renderer = "vulkan";
     g_dk_cached_upload = t["deko3d_cached_upload"].value_or(g_dk_cached_upload);
+    gpu::g_track_state = t["state_tracking"].value_or(gpu::g_track_state);
     g_texture_check_frames = std::clamp<uint32_t>(t["texture_check_frames"].value_or(g_texture_check_frames), 1, 60);
     gpu::g_render_spin_us = std::min<uint32_t>(t["render_spin_us"].value_or(gpu::g_render_spin_us.load()), 2000);
     gpu::g_draw_copy = t["draw_copy"].value_or(gpu::g_draw_copy.load());
