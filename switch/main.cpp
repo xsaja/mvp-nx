@@ -62,10 +62,13 @@ void WindowPixels(int& w, int& h) {
 namespace {
 // buttons_by_name in the settings file: false (default) maps the face buttons by position, true by their letter
 bool g_buttons_by_name = false;
+// renderer in the settings file: "vulkan" (NVK, the default while deko3d is tested) or "deko3d"
+std::string g_renderer = "vulkan";
 }  // namespace
 
 namespace host {
 bool ButtonsByName() { return g_buttons_by_name; }
+bool UseDeko3d() { return g_renderer == "deko3d"; }
 }  // namespace host
 
 namespace app {
@@ -83,6 +86,7 @@ toml::table Table() {
                   {"xbox_720p", s.xbox_720p},
                   {"anisotropic_filtering", int64_t(s.aniso)},
                   {"buttons_by_name", g_buttons_by_name},
+                  {"renderer", g_renderer},
                   {"render_spin_us", int64_t(gpu::g_render_spin_us.load())},
                   {"draw_copy", gpu::g_draw_copy.load()},
                   {"saltynx", g_saltynx},
@@ -131,6 +135,8 @@ void Load() {
     s.xbox_720p = t["xbox_720p"].value_or(s.xbox_720p);
     s.aniso = t["anisotropic_filtering"].value_or(s.aniso);
     g_buttons_by_name = t["buttons_by_name"].value_or(g_buttons_by_name);
+    g_renderer = t["renderer"].value_or(g_renderer);
+    if (g_renderer != "deko3d") g_renderer = "vulkan";
     gpu::g_render_spin_us = std::min<uint32_t>(t["render_spin_us"].value_or(gpu::g_render_spin_us.load()), 2000);
     gpu::g_draw_copy = t["draw_copy"].value_or(gpu::g_draw_copy.load());
     g_saltynx = t["saltynx"].value_or(g_saltynx);

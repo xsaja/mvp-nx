@@ -2889,75 +2889,6 @@ void VulkanBackend::DrawFrame(Target* t, uint32_t index) {
                          VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1, &b);
 }
 
-namespace {
-
-// a PNG without compression (stored deflate blocks): no zlib needed, a few MB a capture
-void PutBe32(std::vector<uint8_t>& v, uint32_t x) {
-    for (int s = 24; s >= 0; s -= 8) v.push_back(uint8_t(x >> s));
-}
-
-uint32_t Crc32(const uint8_t* p, size_t n) {
-    static uint32_t table[256];
-    static bool made = false;
-    if (!made) {
-        for (uint32_t i = 0; i < 256; i++) {
-            uint32_t k = i;
-            for (int j = 0; j < 8; j++) k = (k & 1) ? 0xEDB88320u ^ (k >> 1) : k >> 1;
-            table[i] = k;
-        }
-        made = true;
-    }
-    uint32_t c = 0xFFFFFFFFu;
-    for (size_t i = 0; i < n; i++) c = table[(c ^ p[i]) & 0xFF] ^ (c >> 8);
-    return c ^ 0xFFFFFFFFu;
-}
-
-void Chunk(std::vector<uint8_t>& png, const char* type, const std::vector<uint8_t>& data) {
-    PutBe32(png, uint32_t(data.size()));
-    size_t at = png.size();
-    png.insert(png.end(), type, type + 4);
-    png.insert(png.end(), data.begin(), data.end());
-    PutBe32(png, Crc32(png.data() + at, png.size() - at));
-}
-
-// rgb: w * h pixels, 3 bytes each
-std::vector<uint8_t> EncodePng(const std::vector<uint8_t>& rgb, uint32_t w, uint32_t h) {
-    std::vector<uint8_t> raw;  // each row behind its filter byte (none)
-    raw.reserve(size_t(w * 3 + 1) * h);
-    for (uint32_t y = 0; y < h; y++) {
-        raw.push_back(0);
-        raw.insert(raw.end(), rgb.begin() + size_t(y) * w * 3, rgb.begin() + size_t(y + 1) * w * 3);
-    }
-    std::vector<uint8_t> z = {0x78, 0x01};
-    uint32_t a = 1, b = 0;
-    for (uint8_t c : raw) {
-        a = (a + c) % 65521;
-        b = (b + a) % 65521;
-    }
-    for (size_t at = 0; at < raw.size();) {
-        size_t n = std::min<size_t>(raw.size() - at, 65535);
-        z.push_back(at + n == raw.size() ? 1 : 0);
-        z.push_back(uint8_t(n));
-        z.push_back(uint8_t(n >> 8));
-        z.push_back(uint8_t(~n));
-        z.push_back(uint8_t(~n >> 8));
-        z.insert(z.end(), raw.begin() + at, raw.begin() + at + n);
-        at += n;
-    }
-    PutBe32(z, b << 16 | a);
-    std::vector<uint8_t> png = {0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A};
-    std::vector<uint8_t> ihdr;
-    PutBe32(ihdr, w);
-    PutBe32(ihdr, h);
-    ihdr.insert(ihdr.end(), {8, 2, 0, 0, 0});  // 8 bit RGB
-    Chunk(png, "IHDR", ihdr);
-    Chunk(png, "IDAT", z);
-    Chunk(png, "IEND", {});
-    return png;
-}
-
-}  // namespace
-
 void VulkanBackend::SaveShot() {
     shot_pending_ = false;
     WaitValue(value_);
@@ -3174,7 +3105,18 @@ VulkanBackend* g_vulkan = nullptr;
 
 }  // namespace
 
+#ifdef __SWITCH__
+std::unique_ptr<Backend> CreateDekoBackend();  // deko.cpp
+#endif
+
+// the renderer setting picks deko3d on the Switch; Vulkan (NVK) otherwise
 std::unique_ptr<Backend> CreateBackend() {
+#ifdef __SWITCH__
+    if (host::UseDeko3d()) {
+        LOGR("renderer: deko3d");
+        return CreateDekoBackend();
+    }
+#endif
     auto backend = std::make_unique<VulkanBackend>();
     g_vulkan = backend.get();
     return backend;

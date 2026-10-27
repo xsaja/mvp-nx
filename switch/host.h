@@ -15,6 +15,8 @@ uint32_t SurfaceEpoch();
 void WindowPixels(int& w, int& h);
 // the face buttons by letter (A is the Xbox A) instead of by position (the bottom button is the Xbox A)
 bool ButtonsByName();
+// the renderer setting: deko3d (dk_*.cpp, deko.cpp) instead of Vulkan on NVK (vulkan.cpp)
+bool UseDeko3d();
 // cpu_mhz, gpu_mhz, mem_mhz from the settings (clocks.cpp): name is "cpu", "gpu" or "mem", 0 the system's clock
 void SetClockWanted(const char* name, uint32_t mhz);
 uint32_t ClockWanted(const char* name);
