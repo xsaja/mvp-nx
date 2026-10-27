@@ -290,8 +290,11 @@ bool RawReadable(const State& s, const Inputs& inputs) {
         bool readable = he.format && stride && stride % kStrideAlign == 0 && in.offset < kElementOffsetEnd &&
                         in.offset % std::min<uint32_t>(he.bytes, 4) == 0;
         if (!readable) {
-            LOG_FIRST(32, "vertex: converted on the CPU: v%d type %02X offset %u stride %u", inputs.regs[k], in.type,
-                      in.offset, stride);
+            // MVP05: in every log (a few lines), the reason a draw's vertices are converted on the CPU
+            static std::atomic<int> logged{0};
+            if (logged.fetch_add(1, std::memory_order_relaxed) < 24)
+                LOGR("vertex: converted on the CPU: v%d type %02X offset %u stride %u", inputs.regs[k], in.type,
+                     in.offset, stride);
             return false;
         }
     }
