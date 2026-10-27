@@ -101,6 +101,27 @@ void ApplyClocks() {
     }
 }
 
+// once a second: the system or a clock sysmodule (sys-clk, Horizon OC) may set its own rate after ours; it is logged
+// and ours set again, so a log shows whether the asked clock held
+void WatchClocks() {
+    static uint64_t next = 0;
+    static uint32_t resets = 0;
+    if (!g_open) return;
+    uint64_t now = armTicksToNs(armGetSystemTick());
+    if (now < next) return;
+    next = now + 1000000000ull;
+    for (Domain& d : g_domains) {
+        if (!d.want_mhz) continue;
+        uint32_t want = std::min(d.want_mhz, d.max_mhz), is = GetHz(d) / 1000000u;
+        if (is == want) continue;
+        ++resets;
+        if (resets <= 10 || resets % 60 == 0)
+            LOGR("clocks: %s at %u MHz instead of %u (set by the system or a clock sysmodule; %u times), set again", d.name,
+                 is, want, resets);
+        SetHz(d, want * 1000000u);
+    }
+}
+
 void RestoreClocks() {
     if (!g_open) return;
     for (Domain& d : g_domains)

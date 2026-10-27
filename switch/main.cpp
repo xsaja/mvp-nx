@@ -401,6 +401,7 @@ int main(int, char**) {
             LOGR("app: console %s", m == AppletOperationMode_Console ? "docked" : "handheld");
             host::ApplyClocks();  // the system set its own for the new mode
         }
+        host::WatchClocks();
         // the output follows ReverseNX-RT's pick when there is one (no event for it: asked every 100 ms)
         bool docked = host::OverlaysDocked(m == AppletOperationMode_Console);
         if (docked != g_docked) {

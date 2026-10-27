@@ -26,6 +26,7 @@ void SetClockWanted(const char* name, uint32_t mhz);
 uint32_t ClockWanted(const char* name);
 void ApplyClocks();    // at start and after each docked/handheld change
 void RestoreClocks();  // the system's clocks back
+void WatchClocks();    // from the main loop: the asked clocks set again if something changed them
 // the console's overlays through SaltyNX (overlays.cpp): FPS and resolution for Status Monitor / Horizon OC Monitor,
 // and the handheld/docked mode picked in ReverseNX-RT. All do nothing without SaltyNX
 void OverlaysEnable(bool on);                              // the saltynx setting
