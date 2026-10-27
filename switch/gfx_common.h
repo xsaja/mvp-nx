@@ -223,6 +223,9 @@ bool Changed(const Target& t) {
 
 template <class Target>
 bool LatchCpuWrite(Target& t) {
+    uint64_t now = DirtyEpochNow();
+    if (now == t.seen) return false;
+    t.seen = now;
     uint64_t e = DirtyEpoch(t.data);
     if (e <= t.epoch) return false;
     t.epoch = e;

@@ -235,6 +235,7 @@ struct Target {
     uint32_t gw = 0, gh = 0, w = 0, h = 0;
     uint32_t data = 0, bytes = 0;
     uint64_t epoch = 0, sig = 0;
+    uint64_t seen = 0;  // DirtyEpochNow at the last check
     bool drawn = false;
     std::vector<uint8_t> read;
     Image fb;  // copy read by draws that sample the target they render to
@@ -484,9 +485,9 @@ private:
 
     // MVP05's perf lines, as vulkan.cpp's
     enum Phase { kPhAssemble, kPhShaders, kPhPipeline, kPhUpload, kPhSets, kPhRecord, kPhAcquire, kPhReset, kPhPresent,
-                 kPhases };
+                 kPhTargets, kPhTextures, kPhConstants, kPhases };
     uint64_t phase_ns_[kPhases] = {};
-    uint64_t const_reused_ = 0, const_uploaded_ = 0;
+    uint64_t const_reused_ = 0, const_uploaded_ = 0, upload_bytes_ = 0;
     uint64_t gpu_ns_ = 0, gpu_works_ = 0;
     bool timed_[kSlots] = {};
     uint64_t compiles_ = 0, compile_ns_ = 0;
@@ -702,6 +703,7 @@ Upload DekoBackend::ConstantsReused(LastConstants& last, const void* data, size_
     }
     Upload u = Constants(data, bytes);
     const_uploaded_++;
+    upload_bytes_ += bytes;
     last.gen = upload_gen_;
     last.bytes = bytes;
     last.at = u;
@@ -1478,14 +1480,17 @@ void DekoBackend::Draw(const State& s, uint32_t prim, uint32_t start, uint32_t c
     if (rt && LatchCpuWrite(*rt)) UploadTarget(*rt, s.rt);
     draw_rt_ = rt;
     draw_ds_ = ds;
+    phase(kPhTargets);
 
     DrawShaders sh = ClassifyShaders<DrawShaders>(s, a);
     if (sh.prog) EnsureProgramHash(s);
     sh.vkey = VertexKey(s, a, sh);
     EnsureVertexShader(s, a, sh);
 
+    phase(kPhShaders);
     DrawTextures stages;
     if (!BindStageTextures(s, stages) || !draw_rt_ && !draw_ds_) return;
+    phase(kPhTextures);
     PixelKey pk = MakePixelKey(s, stages.info);
     sh.pkey = Hash(&pk, sizeof(pk));
     EnsurePixelShader(pk, sh);
@@ -1507,6 +1512,7 @@ void DekoBackend::Draw(const State& s, uint32_t prim, uint32_t start, uint32_t c
         FillTransformConstants(s, size, c);
         FillLightConstants(s, sh.fk, c);
     }
+    phase(kPhConstants);
     // everything uploaded before the targets are bound: a full ring ends the slot, which drops the bound state
     uint32_t need = 2 * kUboRange + 1024 + a.index_count * 4 + 16;
     for (uint32_t i = 0; i < a.buffer_count; i++) need += a.buffers[i].bytes + 16;
@@ -1518,6 +1524,7 @@ void DekoBackend::Draw(const State& s, uint32_t prim, uint32_t start, uint32_t c
         const VertexBuffer& b = a.buffers[i];
         Upload v = Reserve(std::max<uint32_t>(b.bytes, 4), 16);
         if (b.src && b.bytes) std::memcpy(v.cpu, b.src, b.bytes);
+        upload_bytes_ += b.bytes;
         vbuf[i] = v.gpu;
     }
     Upload ib{};
@@ -1525,6 +1532,7 @@ void DekoBackend::Draw(const State& s, uint32_t prim, uint32_t start, uint32_t c
     if (a.index_count) {
         ib = Reserve(ibytes, 4);
         std::memcpy(ib.cpu, a.index_src, ibytes);
+        upload_bytes_ += ibytes;
     }
     phase(kPhUpload);
     bool clamp = AnyStageWraps(s) && UnitTexcoords(a);
@@ -1993,11 +2001,12 @@ void DekoBackend::LogPerf() {
         phase_ns_[i] = 0;
     }
     double reused = const_reused_ + const_uploaded_ ? 100.0 * double(const_reused_) / double(const_reused_ + const_uploaded_) : 0;
-    const_reused_ = const_uploaded_ = 0;
-    LOGR("perf: rt ms a frame: assemble %.2f, shaders %.2f, bind %.2f, upload %.2f, samplers %.2f, record %.2f; "
+    const_reused_ = const_uploaded_ = upload_bytes_ = 0;
+    LOGR("perf: rt ms a frame: assemble %.2f, targets %.2f, shaders %.2f, textures %.2f, constants %.2f, upload %.2f (%.0f KB), bind %.2f, samplers %.2f, record %.2f; "
          "acquire %.2f, next slot %.2f, present %.2f; constants reused %.0f%%; %llu shaders compiled (%.0f ms); "
          "barriers a frame: %.1f full, %.1f fragment",
-         ph[kPhAssemble], ph[kPhShaders], ph[kPhPipeline], ph[kPhUpload], ph[kPhSets], ph[kPhRecord], ph[kPhAcquire],
+         ph[kPhAssemble], ph[kPhTargets], ph[kPhShaders], ph[kPhTextures], ph[kPhConstants], ph[kPhUpload],
+         double(upload_bytes_) / 1024 / n, ph[kPhPipeline], ph[kPhSets], ph[kPhRecord], ph[kPhAcquire],
          ph[kPhReset], ph[kPhPresent], reused, (unsigned long long)compiles_, compile_ns_ / 1e6, barriers_full_ / n,
          barriers_frag_ / n);
     compiles_ = compile_ns_ = 0;

@@ -1,6 +1,7 @@
 #include "gpu/texture.h"
 
 #include <algorithm>
+#include <atomic>
 #include <bit>
 #include <cstring>
 #include <mutex>
@@ -256,7 +257,7 @@ float DepthTexel(uint32_t fmt, const uint8_t* p) {
 
 std::mutex g_dirty_lock;
 std::unordered_map<uint32_t, uint64_t> g_dirty;
-uint64_t g_epoch = 1;
+std::atomic<uint64_t> g_epoch{1};
 
 }  // namespace
 
@@ -437,6 +438,8 @@ uint64_t DirtyEpoch(uint32_t data) {
     auto it = g_dirty.find(data);
     return it == g_dirty.end() ? 0 : it->second;
 }
+
+uint64_t DirtyEpochNow() { return g_epoch.load(std::memory_order_acquire); }
 
 bool CopySurfaceMemory(const Surface& src, const Surface& dst, uint32_t count, uint32_t rects, uint32_t points) {
     TextureDesc a, b;

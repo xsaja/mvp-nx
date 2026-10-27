@@ -424,6 +424,7 @@ struct Target {
     uint32_t gw = 0, gh = 0, w = 0, h = 0;
     uint32_t data = 0, bytes = 0;
     uint64_t epoch = 0, sig = 0;  // last lock seen, guest memory as last matched
+    uint64_t seen = 0;            // DirtyEpochNow at the last check
     bool drawn = false;           // the GPU wrote it since the last readback
     std::vector<uint8_t> read;    // what Sync left in guest memory
     Image fb;                     // copy read by draws that sample the target they render to
