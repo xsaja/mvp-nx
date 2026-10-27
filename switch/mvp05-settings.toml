@@ -11,6 +11,10 @@ render_percent = 100
 # (lineas "perf:").
 fps_cap = 60
 
+# Motor grafico: "vulkan" (NVK, el de siempre) o "deko3d" (el nativo de la Switch, en pruebas: mas rapido
+# en la GPU; la primera vez compila sus shaders al arrancar, unos segundos). Si algo se ve mal, vuelve a "vulkan".
+renderer = "vulkan"
+
 # Sincronia vertical (evita cortes en la imagen).
 vsync = true
 
