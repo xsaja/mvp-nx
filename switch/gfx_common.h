@@ -211,6 +211,17 @@ uint64_t MemSig(uint32_t data, uint32_t total) {
     return sig;
 }
 
+// a few samples of a texture: between the whole checks of MemSig
+uint64_t MemSigSampled(uint32_t data, uint32_t total) {
+    constexpr uint32_t kSamples = 16, kBytes = 64;
+    const uint8_t* p = static_cast<const uint8_t*>(kernel::HostPtr(data));
+    uint64_t sig = Hash(&total, sizeof(total), 0x5A3D);
+    if (total <= kSamples * kBytes) return Hash(p, total, sig);
+    for (uint32_t i = 0; i < kSamples; i++)
+        sig = Hash(p + uint64_t(total - kBytes) * i / (kSamples - 1), kBytes, sig);
+    return sig;
+}
+
 template <class Target>
 bool Changed(const Target& t) {
     if (t.drawn || t.read.empty()) return false;

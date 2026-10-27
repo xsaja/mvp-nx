@@ -67,12 +67,15 @@ bool g_buttons_by_name = false;
 std::string g_renderer = "vulkan";
 // deko3d_cached_upload: the upload ring CPU cached and cleaned before each submit, instead of uncached
 bool g_dk_cached_upload = true;
+// texture_check_frames: a texture nobody locked is hashed whole once in this many frames, sampled in the others
+uint32_t g_texture_check_frames = 8;
 }  // namespace
 
 namespace host {
 bool ButtonsByName() { return g_buttons_by_name; }
 bool UseDeko3d() { return g_renderer == "deko3d"; }
 bool DekoCachedUpload() { return g_dk_cached_upload; }
+uint32_t TextureCheckFrames() { return g_texture_check_frames; }
 }  // namespace host
 
 namespace app {
@@ -92,6 +95,7 @@ toml::table Table() {
                   {"buttons_by_name", g_buttons_by_name},
                   {"renderer", g_renderer},
                   {"deko3d_cached_upload", g_dk_cached_upload},
+                  {"texture_check_frames", int64_t(g_texture_check_frames)},
                   {"render_spin_us", int64_t(gpu::g_render_spin_us.load())},
                   {"draw_copy", gpu::g_draw_copy.load()},
                   {"saltynx", g_saltynx},
@@ -143,6 +147,7 @@ void Load() {
     g_renderer = t["renderer"].value_or(g_renderer);
     if (g_renderer != "deko3d") g_renderer = "vulkan";
     g_dk_cached_upload = t["deko3d_cached_upload"].value_or(g_dk_cached_upload);
+    g_texture_check_frames = std::clamp<uint32_t>(t["texture_check_frames"].value_or(g_texture_check_frames), 1, 60);
     gpu::g_render_spin_us = std::min<uint32_t>(t["render_spin_us"].value_or(gpu::g_render_spin_us.load()), 2000);
     gpu::g_draw_copy = t["draw_copy"].value_or(gpu::g_draw_copy.load());
     g_saltynx = t["saltynx"].value_or(g_saltynx);

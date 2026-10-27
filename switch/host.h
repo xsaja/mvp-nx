@@ -19,6 +19,8 @@ bool ButtonsByName();
 bool UseDeko3d();
 // deko3d: vertices and constants written to CPU cached memory, cleaned before each submit
 bool DekoCachedUpload();
+// deko3d: frames between whole checks of an unlocked texture for CPU writes (1 = every frame)
+uint32_t TextureCheckFrames();
 // cpu_mhz, gpu_mhz, mem_mhz from the settings (clocks.cpp): name is "cpu", "gpu" or "mem", 0 the system's clock
 void SetClockWanted(const char* name, uint32_t mhz);
 uint32_t ClockWanted(const char* name);

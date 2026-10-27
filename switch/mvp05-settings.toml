@@ -19,6 +19,10 @@ renderer = "vulkan"
 # Si con deko3d salen figuras rotas o parpadeos, prueba false.
 deko3d_cached_upload = true
 
+# Solo con deko3d: cada cuantos frames se revisa entera una textura que el juego pudo cambiar (8 por defecto;
+# 1 = en cada frame, como antes). Si alguna textura tarda en actualizarse (marcador, letreros), prueba 1.
+texture_check_frames = 8
+
 # Sincronia vertical (evita cortes en la imagen).
 vsync = true
 

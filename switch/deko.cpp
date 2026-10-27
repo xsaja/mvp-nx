@@ -248,6 +248,7 @@ struct Tex {
     bool decode = false;
     uint32_t levels = 1;
     uint64_t sig = 0;
+    uint64_t sampled = 0;  // MemSigSampled ^ epoch ^ palette as of the last whole check
     uint64_t frame = 0;
     uint64_t palette = 0;
 };
@@ -513,6 +514,8 @@ private:
     uint64_t phase_ns_[kPhases] = {};
     uint64_t const_reused_ = 0, const_uploaded_ = 0, upload_bytes_ = 0;
     uint64_t stage_memo_hits_ = 0, stage_memo_misses_ = 0;
+    uint64_t sig_bytes_ = 0, tex_uploads_ = 0, tex_upload_bytes_ = 0;
+    uint32_t check_frames_ = 1;
     uint64_t gpu_ns_ = 0, gpu_works_ = 0;
     bool timed_[kSlots] = {};
     uint64_t compiles_ = 0, compile_ns_ = 0;
@@ -537,6 +540,7 @@ bool DekoBackend::Init(uint32_t width, uint32_t height) {
     config.slots = kSlots;
     config.upload_mb = kUploadMb;
     config.upload_cached = host::DekoCachedUpload();
+    check_frames_ = host::TextureCheckFrames();
     config.command_kb = 2048;
     core_.Create(device_, config);
     free_desc_.clear();
@@ -1372,9 +1376,24 @@ uint32_t DekoBackend::BindGuestTexture(const State& s, int stage, const TextureD
     if (t.frame != presents_ + 1 || !same || t.palette != palette.hash) {
         t.frame = presents_ + 1;
         t.palette = palette.hash;
-        uint64_t sig = MemSig(d.data, TotalSize(d)) ^ DirtyEpoch(d.data) ^ palette.hash;
+        const uint32_t total = TotalSize(d);
+        const uint64_t mix = DirtyEpoch(d.data) ^ palette.hash;
+        const uint32_t every = check_frames_;
+        // between whole checks a few samples: a lock, a new palette or changed samples check it whole at once
+        bool whole = !same || every <= 1 || (presents_ + (key >> 6)) % every == 0;
+        uint64_t sampled = MemSigSampled(d.data, total) ^ mix;
+        sig_bytes_ += std::min<uint32_t>(total, 1024);
+        if (!whole && sampled != t.sampled) whole = true;
+        uint64_t sig = t.sig;
+        if (whole) {
+            sig = MemSig(d.data, total) ^ mix;
+            sig_bytes_ += total <= 65536 ? total : 4096;
+            t.sampled = sampled;
+        }
         if (sig != t.sig || !same) {
             t.sig = sig;
+            tex_uploads_++;
+            tex_upload_bytes_ += total;
             UploadTexture(t, d, fi, static_cast<const uint8_t*>(kernel::HostPtr(d.data)), palette.va ? palette.colours : nullptr);
         }
     }
@@ -2105,6 +2124,12 @@ void DekoBackend::LogPerf() {
          stage_memo_hits_ + stage_memo_misses_ ? 100.0 * double(stage_memo_hits_) / double(stage_memo_hits_ + stage_memo_misses_) : 0.0,
          core_.config().upload_cached ? "cached" : "uncached");
     stage_memo_hits_ = stage_memo_misses_ = 0;
+    LOGR("perf: textures a frame: %.0f KB checked, %.1f uploaded (%.0f KB); title thread in draws: state %.2f ms, "
+         "copies %.2f ms (%.0f KB)",
+         double(sig_bytes_) / 1024 / n, double(tex_uploads_) / n, double(tex_upload_bytes_) / 1024 / n,
+         double(gpu::g_perf_rec_state_ns.exchange(0)) / 1e6 / n, double(gpu::g_perf_rec_copy_ns.exchange(0)) / 1e6 / n,
+         double(gpu::g_perf_copied_bytes.exchange(0)) / 1024 / n);
+    sig_bytes_ = tex_uploads_ = tex_upload_bytes_ = 0;
     barriers_full_ = barriers_frag_ = 0;
     auto per = [&](std::atomic<uint64_t>& a) { return double(a.exchange(0)) / n; };
     double raw = per(gpu::g_perf_asm_raw), conv = per(gpu::g_perf_asm_converted), listed = per(gpu::g_perf_asm_listed);

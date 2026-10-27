@@ -64,10 +64,27 @@ struct DrawCopies {
     std::array<uint32_t, 16> at;
 };
 
+// grows without zeroing: every byte added is written at once
+template <class T>
+struct NoInit : std::allocator<T> {
+    template <class U>
+    struct rebind {
+        using other = NoInit<U>;
+    };
+    template <class U>
+    void construct(U* p) noexcept {
+        ::new (static_cast<void*>(p)) U;
+    }
+    template <class U, class... A>
+    void construct(U* p, A&&... a) {
+        ::new (static_cast<void*>(p)) U(std::forward<A>(a)...);
+    }
+};
+
 struct Batch {
     uint64_t id = 0;
     std::vector<Cmd> cmds;
-    std::vector<uint8_t> bytes;
+    std::vector<uint8_t, NoInit<uint8_t>> bytes;
     std::vector<DrawCopies> copies;  // Op::Draw with size != 0 uses copies[size - 1]
     std::vector<std::shared_ptr<VertexShader>> vs;
     std::vector<std::shared_ptr<PixelShader>> ps;
@@ -137,6 +154,8 @@ public:
         auto t = Clock::now();
         g_perf_draws++;
         SendState(s);
+        auto t_state = Clock::now();
+        g_perf_rec_state_ns += uint64_t(std::chrono::duration_cast<std::chrono::nanoseconds>(t_state - t).count());
         Cmd c{Op::Draw};
         c.a = prim;
         c.b = start;
@@ -152,6 +171,7 @@ public:
         }();
         (void)env_copy;
         bool copied = g_draw_copy.load(std::memory_order_relaxed) && CopyVertices(s, c, indices);
+        g_perf_rec_copy_ns += Ns(t_state);
         cur_->cmds.push_back(c);
         for (uint32_t tex : s.textures) Use(tex);
         for (uint32_t pal : s.palettes) Use(pal);
