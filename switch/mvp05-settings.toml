@@ -36,11 +36,12 @@ xbox_720p = true
 # Filtrado anisotropico: 0 = lo que pida el juego; 2, 4, 8 o 16 para forzarlo.
 anisotropic_filtering = 0
 
-# Botones A/B/X/Y: true (por defecto) = por letra: se pulsa la letra que muestra el juego (A acepta, B vuelve,
-# como en la Switch). false = por posicion, como un mando de Xbox (B abajo = A de Xbox, A derecha = B,
-# Y izquierda = X, X arriba = Y): el diamante de bases del juego coincide con la forma de los botones.
+# Botones A/B/X/Y: false (por defecto) = por posicion, como un mando de Xbox (B abajo = A de Xbox,
+# A derecha = B, Y izquierda = X, X arriba = Y; en el diamante de bases X = segunda, B = home,
+# A = primera, Y = tercera). true = por letra (A = A de Xbox; los menus aceptan con A, pero el diamante
+# de bases ya no coincide con la forma de los botones).
 # L y R son los gatillos L y R que muestra el juego; ZL y ZR, los botones blanco y negro del mando de Xbox.
-buttons_by_name = true
+buttons_by_name = false
 
 # Relojes en MHz (0 = los de la consola, sin tocar). Se aplican al arrancar y al poner o quitar la base, y
 # se devuelven los de la consola al salir. Tope: CPU 1785, GPU 921, memoria 1600 (los maximos oficiales).

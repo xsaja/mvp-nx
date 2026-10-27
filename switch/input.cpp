@@ -1,8 +1,8 @@
 // controllers through libnx's HID: the handheld Joy-Cons or a pair/Pro Controller as player 1, players 2-4 on their
-// own pads. The face buttons by letter by default, the letter the game shows is the one to press (A confirms, as on
-// the Switch). buttons_by_name = false in the settings maps them by position instead, as an Xbox pad lies under the
-// hand: bottom B is the Xbox A, right A is B, left Y is X, top X is Y. L and R are the triggers, which the game shows as
-// L and R; ZL and ZR the white and black buttons; + is Start and - is Back.
+// own pads. The face buttons by position by default, as an Xbox pad lies under the hand (MVP throws to the bases by
+// the diamond they make): bottom B is the Xbox A, right A is B, left Y is X, top X is Y. buttons_by_name = true in the
+// settings maps them by letter instead. L and R are the triggers, which the game shows as L and R; ZL and ZR the
+// white and black buttons; + is Start and - is Back.
 #include "core/input.h"
 
 #include <switch.h>

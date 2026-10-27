@@ -61,8 +61,8 @@ void WindowPixels(int& w, int& h) {
 }  // namespace host
 
 namespace {
-// buttons_by_name in the settings file: true (default) maps the face buttons by their letter, false by position
-bool g_buttons_by_name = true;
+// buttons_by_name in the settings file: false (default) maps the face buttons by position, true by their letter
+bool g_buttons_by_name = false;
 // renderer in the settings file: "deko3d" (the console's own API, the default) or "vulkan" (NVK)
 std::string g_renderer = "deko3d";
 // deko3d_cached_upload: the upload ring CPU cached and cleaned before each submit, instead of uncached
