@@ -36,6 +36,10 @@ namespace xnet {
 void CloseSockets();  // xdk/xnet.cpp
 }
 
+#ifdef __SWITCH__
+extern "C" void __appExit(void);  // libnx: the services' and the applet's teardown
+#endif
+
 namespace kernel {
 
 #ifdef __SWITCH__
@@ -263,6 +267,10 @@ void Shutdown(int code) {
     // the process ends here with every thread in it. Returning to the loader (std::_Exit) leaves the game's own threads
     // running while a loader that stays (sphaira) takes the program's memory back: one of them then jumped into it
     // (Instruction Abort at the NRO's base). A forwarder ended the process after the return, so it never showed.
+    // libnx's own teardown goes first (__appExit: the services, and the applet saying it ends on purpose): a bare
+    // process exit was taken by the system for a crash ("closed because of an error" with no crash report)
+    appletUnlockExit();
+    __appExit();
     svcExitProcess();
 #endif
     std::_Exit(code);
