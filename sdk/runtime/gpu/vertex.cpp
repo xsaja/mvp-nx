@@ -187,6 +187,7 @@ void ResetAssembled(Assembled& out) {
     out.draw_count = 0;
     out.index_count = 0;
     out.base_vertex = 0;
+    out.native_prim = 0;
 }
 
 // the draw as Assemble got it, plus the vertex range it reads
@@ -357,6 +358,7 @@ bool DrawNative(const DrawRange& d, bool dense, Assembled& out) {
 }
 
 bool UseIndexList(Assembled& out) {
+    g_perf_asm_listed.fetch_add(1, std::memory_order_relaxed);
     out.index_src = out.indices.data();
     out.index_count = uint32_t(out.indices.size());
     return out.index_count != 0;
@@ -381,7 +383,16 @@ bool AssembleRaw(const State& s, const Inputs& inputs, const DrawRange& d, Assem
         out.decode |= uint64_t(he.decode) << (reg * 4);
     }
     out.vertex_count = dense ? d.span : d.count;
+    g_perf_asm_raw.fetch_add(1, std::memory_order_relaxed);
     if (NativePrimitive(d.prim)) return DrawNative(d, dense, out);
+    // MVP05: loops, fans, quads and polygons as they are, for a backend that has them
+    if (g_native_polygons.load(std::memory_order_relaxed) && (d.prim == 3 || (d.prim >= 7 && d.prim <= 10))) {
+        DrawNative(d, dense, out);
+        out.native_prim = uint8_t(d.prim);
+        out.strip = false;
+        out.topology = d.prim == 3 ? Topology::Lines : Topology::Triangles;
+        return d.count >= (d.prim == 3 ? 2u : d.prim == 8 || d.prim == 9 ? 4u : 3u);
+    }
     auto local = [&](uint32_t i) { return dense ? DrawVertex(s, d, i) - d.first_vertex : i; };
     ListIndices(d.prim, d.count, local, out.indices, out.topology);
     return UseIndexList(out);
@@ -395,11 +406,14 @@ constexpr uint64_t kRangedSpanSlack = 64;
 bool AssembleConverted(const State& s, const Inputs& inputs, const DrawRange& d, Assembled& out) {
     using namespace kernel;
     int nregs = inputs.nregs;
-    std::vector<uint32_t> seq(d.count);
+    g_perf_asm_converted.fetch_add(1, std::memory_order_relaxed);
+    static thread_local std::vector<uint32_t> seq;  // MVP05: kept between draws, not allocated for each
+    seq.resize(d.count);
     for (uint32_t i = 0; i < d.count; i++) seq[i] = DrawVertex(s, d, i);
     bool ranged = uint64_t(d.span) <= uint64_t(d.count) * kRangedSpanPerVertex + kRangedSpanSlack;
     uint32_t n = ranged ? d.span : d.count;
     out.vertex_count = n;
+    g_perf_asm_vertices.fetch_add(n, std::memory_order_relaxed);
     out.vertices.resize(size_t(n) * nregs * 4);
     for (int k = 0; k < nregs; k++) {
         const auto& in = inputs.layout.inputs[size_t(inputs.regs[k])];

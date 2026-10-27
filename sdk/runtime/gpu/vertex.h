@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include <atomic>
 #include <cstdint>
 #include <vector>
 
@@ -49,8 +50,17 @@ struct Assembled {
     uint32_t index_count = 0;         // 0: an unindexed draw of draw_count vertices
     uint32_t draw_count = 0;
     int32_t base_vertex = 0;
+    // MVP05: a line loop, fan, quad list, quad strip or polygon left as it is (its D3D number, 3 or 7 to 10) for a
+    // backend that draws them natively (g_native_polygons); 0 otherwise
+    uint8_t native_prim = 0;
     std::array<std::vector<uint8_t>, 16> gathered;  // raw vertices copied in draw order when the indices are sparse
 };
+
+// MVP05: the backend draws line loops, fans, quads, quad strips and polygons itself (deko3d does, Vulkan does not):
+// raw-vertex draws of them keep their own vertices and indices instead of a rebuilt triangle list
+inline std::atomic<bool> g_native_polygons{false};
+// MVP05 perf: draws assembled from raw vertices, converted on the CPU, given a rebuilt index list; vertices converted
+inline std::atomic<uint64_t> g_perf_asm_raw{0}, g_perf_asm_converted{0}, g_perf_asm_listed{0}, g_perf_asm_vertices{0};
 
 // the FVF bits translated to the register layout the XDK's declarations use
 void FvfInputs(uint32_t fvf, VertexShader& out);

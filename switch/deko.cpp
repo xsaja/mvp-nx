@@ -189,7 +189,18 @@ void VertexFormat(uint32_t dxgi, DkVtxAttribState& a) {
     }
 }
 
-DkPrimitive Primitive(Topology t, bool strip) {
+DkPrimitive Primitive(const Assembled& a) {
+    // MVP05: what the Xbox drew natively and deko3d does too (vertex.cpp leaves them for g_native_polygons)
+    switch (a.native_prim) {
+        case 3: return DkPrimitive_LineLoop;
+        case 7: return DkPrimitive_TriangleFan;
+        case 8: return DkPrimitive_Quads;
+        case 9: return DkPrimitive_QuadStrip;
+        case 10: return DkPrimitive_Polygon;
+        default: break;
+    }
+    Topology t = a.topology;
+    bool strip = a.strip;
     switch (t) {
         case Topology::Points: return DkPrimitive_Points;
         case Topology::Lines: return strip ? DkPrimitive_LineStrip : DkPrimitive_Lines;
@@ -489,6 +500,7 @@ bool DekoBackend::Init(uint32_t width, uint32_t height) {
     cache_dir_ = app::ExeDir() / "shadercache";
     vkshader::Init(cache_dir_);
     compiler_.Start();
+    gpu::g_native_polygons = true;  // fans, quads and polygons drawn as they are, without a rebuilt triangle list
     device_.Create(false);  // ZCULL off until checked (NFSMW-NX's item 6)
     dk::CoreConfig config;
     config.slots = kSlots;
@@ -1550,7 +1562,7 @@ void DekoBackend::Draw(const State& s, uint32_t prim, uint32_t start, uint32_t c
     // one buffer per call: dkCmdBufBindVtxBuffers writes past what it reserves with several (deko3d 0.5.0)
     for (uint32_t i = 0; i < a.buffer_count; i++)
         dkCmdBufBindVtxBuffer(cmd, i, vbuf[i], std::max<uint32_t>(a.buffers[i].bytes, 4));
-    DkPrimitive prim_dk = Primitive(a.topology, a.strip);
+    DkPrimitive prim_dk = Primitive(a);
     if (a.index_count) {
         dkCmdBufBindIdxBuffer(cmd, a.index16 ? DkIdxFormat_Uint16 : DkIdxFormat_Uint32, ib.gpu);
         dkCmdBufDrawIndexed(cmd, prim_dk, a.index_count, 1, 0, a.base_vertex, 0);
@@ -1985,6 +1997,11 @@ void DekoBackend::LogPerf() {
          barriers_frag_ / n);
     compiles_ = compile_ns_ = 0;
     barriers_full_ = barriers_frag_ = 0;
+    auto per = [&](std::atomic<uint64_t>& a) { return double(a.exchange(0)) / n; };
+    double raw = per(gpu::g_perf_asm_raw), conv = per(gpu::g_perf_asm_converted), listed = per(gpu::g_perf_asm_listed);
+    double verts = per(gpu::g_perf_asm_vertices);
+    LOGR("perf: draws a frame assembled: %.0f raw, %.0f converted on the CPU (%.0f vertices), %.0f with a rebuilt index list",
+         raw, conv, verts, listed);
 }
 
 }  // namespace
