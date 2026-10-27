@@ -259,6 +259,12 @@ void Shutdown(int code) {
 #endif
     LOGR("Exit (%d)", code);
     logx::Flush();
+#ifdef __SWITCH__
+    // the process ends here with every thread in it. Returning to the loader (std::_Exit) leaves the game's own threads
+    // running while a loader that stays (sphaira) takes the program's memory back: one of them then jumped into it
+    // (Instruction Abort at the NRO's base). A forwarder ended the process after the return, so it never showed.
+    svcExitProcess();
+#endif
     std::_Exit(code);
 }
 
