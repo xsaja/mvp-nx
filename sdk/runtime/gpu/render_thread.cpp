@@ -161,8 +161,6 @@ public:
         auto t = Clock::now();
         g_perf_draws++;
         SendState(s);
-        auto t_state = Clock::now();
-        g_perf_rec_state_ns += uint64_t(std::chrono::duration_cast<std::chrono::nanoseconds>(t_state - t).count());
         Cmd c{Op::Draw};
         c.a = prim;
         c.b = start;
@@ -178,8 +176,6 @@ public:
         }();
         (void)env_copy;
         bool copied = g_draw_copy.load(std::memory_order_relaxed) && CopyVertices(s, c, indices);
-        g_perf_rec_copy_ns += Ns(t_state);
-        auto t_uses = Clock::now();
         cur_->cmds.push_back(c);
         for (uint32_t tex : s.textures) Use(tex);
         for (uint32_t pal : s.palettes) Use(pal);
@@ -187,8 +183,6 @@ public:
         Use(s.rt.header);
         Use(s.zs.header);
         Written(s.rt);
-        prof_.uses += Ns(t_uses);
-        prof_.draws++;
         if (cur_->cmds.size() >= kBatchCommands) Submit();
         // Diagnostic only: distinguish reused guest vertex memory from decode/state errors.
         static const bool sync_draws = std::getenv("MVP05_SYNC_DRAWS") != nullptr;
@@ -253,7 +247,6 @@ public:
         c.s1.header = Header(front.header);
         cur_->cmds.push_back(c);
         Use(front.header);
-        LogProfile();
         uint64_t id = Submit();
         g_perf_capture_ns += Ns(t);
         // the title records one frame while the one before it draws
@@ -320,20 +313,6 @@ private:
         return b;
     }
 
-    // MVP05: every 10 s, the title thread's cost per draw: state ranges, headers and deltas, uses; bytes of state sent
-    struct Profile {
-        uint64_t ranges = 0, headers = 0, uses = 0, state_bytes = 0, draws = 0;
-        Clock::time_point since = Clock::now();
-    } prof_;
-    void LogProfile() {
-        if (Clock::now() - prof_.since < std::chrono::seconds(10) || !prof_.draws) return;
-        double d = double(prof_.draws);
-        LOGR("perf: title thread per draw: state ranges %.2f us, headers and deltas %.2f us, uses %.2f us; %.0f bytes of "
-             "state sent; %.0f draws", prof_.ranges / d / 1e3, prof_.headers / d / 1e3, prof_.uses / d / 1e3,
-             prof_.state_bytes / d, d);
-        prof_ = {};
-    }
-
     // the draw's vertex spans into the batch; false (nothing taken) when one is too big or not in guest memory
     bool CopyVertices(const State& s, Cmd& c, const uint8_t* indices) {
         constexpr uint32_t kMaxCopy = 1u << 20;
@@ -394,7 +373,7 @@ private:
         const uint32_t type = kernel::R32(header) & 0x70000;  // 0 vertex, 0x10000 index, 0x30000 palette
         uint8_t now[kHeaderBytes] = {};
         std::memcpy(now, kernel::HostPtr(header), type < 0x20000 || type == 0x30000 ? 12 : kHeaderBytes);
-        Recent<HeaderCopy>& r = recent_headers_[(header >> 3) & 63];
+        Recent<HeaderCopy>& r = recent_headers_[RecentSlot(header)];
         HeaderCopy& c = r.key == header ? *r.value : headers_[header];
         r = {header, &c};
         if (c.made && !std::memcmp(c.bytes, now, kHeaderBytes) && ring_pos_ - c.made < kHeaderRing / 2) return c.at;
@@ -419,7 +398,6 @@ private:
     // what changed since the last command, in 64 byte pieces
     void SendState(const State& s) {
         const uint8_t* now = reinterpret_cast<const uint8_t*>(&s);
-        auto t_send = Clock::now();
         Cmd c{Op::State};
         size_t first = cur_->bytes.size();
         // MVP05: blocks of simple and vsc nobody wrote since the last send are equal to what was sent
@@ -441,8 +419,6 @@ private:
                     Delta(sent + off, now + off, std::min<size_t>(64, end - off));
         }
         CleanState();
-        auto t_ranges = Clock::now();
-        prof_.ranges += uint64_t(std::chrono::duration_cast<std::chrono::nanoseconds>(t_ranges - t_send).count());
         std::array<uint32_t, 4> textures;
         for (size_t i = 0; i < 4; i++) textures[i] = Header(s.textures[i]);
         Delta(&sent_.textures, &textures, sizeof(textures));
@@ -467,8 +443,6 @@ private:
             c.ps = int32_t(cur_->ps.size());
             cur_->ps.push_back(s.ps);
         }
-        prof_.headers += Ns(t_ranges);
-        prof_.state_bytes += cur_->bytes.size() - first;
         if (cur_->bytes.size() == first && c.vs < 0 && c.ps < 0) return;
         c.data = uint32_t(first);
         c.size = uint32_t(cur_->bytes.size() - first);
@@ -478,7 +452,7 @@ private:
     // resources by guest header: the batch that last read them
     void Use(uint32_t header) {
         if (!header) return;
-        Recent<uint64_t>& r = recent_uses_[(header >> 3) & 63];
+        Recent<uint64_t>& r = recent_uses_[RecentSlot(header)];
         if (r.key != header) r = {header, &last_use_[header]};
         *r.value = cur_->id;
     }
@@ -631,8 +605,10 @@ private:
         uint32_t key = 0;
         T* value = nullptr;
     };
-    std::array<Recent<HeaderCopy>, 64> recent_headers_{};
-    std::array<Recent<uint64_t>, 64> recent_uses_{};
+    // MVP05: 1024 slots by a multiplicative hash; (header >> 3) & 63 put the headers of one pool in a few slots
+    static size_t RecentSlot(uint32_t header) { return (header * 2654435761u) >> 22; }
+    std::array<Recent<HeaderCopy>, 1024> recent_headers_{};
+    std::array<Recent<uint64_t>, 1024> recent_uses_{};
     uint32_t ring_ = 0;
     uint64_t ring_pos_ = 0;
     Batch* cur_ = nullptr;

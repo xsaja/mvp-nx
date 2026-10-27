@@ -61,9 +61,13 @@ def main():
     slots = slot_names(a.log)
     data = open(a.bin, 'rb').read()
     per = collections.defaultdict(list)
+    wraps, last = 0, 0
     for i in range(0, len(data) - 31, 32):
         slot, t, pc, lr, *ret = struct.unpack_from('<HHII5I', data, i)
-        sec = t / 100.0
+        if t + 30000 < last:  # the 16 bit time wraps after 655 s
+            wraps += 1
+        last = t
+        sec = (t + wraps * 65536) / 100.0
         if a.t0 <= sec <= a.t1:
             per[slot].append((pc, lr, ret))
     total = sum(len(v) for v in per.values())

@@ -2124,10 +2124,8 @@ void DekoBackend::LogPerf() {
          stage_memo_hits_ + stage_memo_misses_ ? 100.0 * double(stage_memo_hits_) / double(stage_memo_hits_ + stage_memo_misses_) : 0.0,
          core_.config().upload_cached ? "cached" : "uncached");
     stage_memo_hits_ = stage_memo_misses_ = 0;
-    LOGR("perf: textures a frame: %.0f KB checked, %.1f uploaded (%.0f KB); title thread in draws: state %.2f ms, "
-         "copies %.2f ms (%.0f KB)",
+    LOGR("perf: textures a frame: %.0f KB checked, %.1f uploaded (%.0f KB); vertices copied by the title thread %.0f KB",
          double(sig_bytes_) / 1024 / n, double(tex_uploads_) / n, double(tex_upload_bytes_) / 1024 / n,
-         double(gpu::g_perf_rec_state_ns.exchange(0)) / 1e6 / n, double(gpu::g_perf_rec_copy_ns.exchange(0)) / 1e6 / n,
          double(gpu::g_perf_copied_bytes.exchange(0)) / 1024 / n);
     sig_bytes_ = tex_uploads_ = tex_upload_bytes_ = 0;
     barriers_full_ = barriers_frag_ = 0;

@@ -1,5 +1,9 @@
 #include "gpu/vertex.h"
 
+#ifdef __SWITCH__
+#include <arm_neon.h>
+#endif
+
 #include <algorithm>
 #include <cstring>
 
@@ -238,7 +242,21 @@ bool Pretransformed(const State& s) {
 IndexBounds IndexRange(const uint8_t* ip, uint32_t count) {
     uint16_t lo16 = 0xFFFF;
     uint16_t hi16 = 0;
-    for (uint32_t i = 0; i < count; i++) {
+    uint32_t i = 0;
+#ifdef __SWITCH__
+    // MVP05: eight at a time (the title thread and the render thread scan every draw's indices)
+    if (count >= 8) {
+        uint16x8_t lo = vdupq_n_u16(0xFFFF), hi = vdupq_n_u16(0);
+        for (; i + 8 <= count; i += 8) {
+            uint16x8_t v = vreinterpretq_u16_u8(vld1q_u8(ip + i * 2));
+            lo = vminq_u16(lo, v);
+            hi = vmaxq_u16(hi, v);
+        }
+        lo16 = vminvq_u16(lo);
+        hi16 = vmaxvq_u16(hi);
+    }
+#endif
+    for (; i < count; i++) {
         uint16_t v;
         std::memcpy(&v, ip + i * 2, 2);
         lo16 = std::min(lo16, v);

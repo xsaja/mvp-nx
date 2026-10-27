@@ -78,8 +78,7 @@ inline std::atomic<uint32_t> g_render_spin_us{0};
 // Windows. The Switch reads draw_copy from its settings; elsewhere MVP05_DRAW_COPY=1 turns it on.
 inline std::atomic<bool> g_draw_copy{false};
 inline std::atomic<uint64_t> g_perf_copied{0}, g_perf_copied_bytes{0};
-// the title thread inside a draw: sending the state, copying indices and vertices
-inline std::atomic<uint64_t> g_perf_rec_state_ns{0}, g_perf_rec_copy_ns{0};
+
 // MVP05 (performance): a draw whose constants equal the previous draw's in the same upload ring reuses that upload
 inline std::atomic<bool> g_reuse_constants{false};
 
