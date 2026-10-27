@@ -127,7 +127,7 @@ if(HAVE_GEN)
         -Wl,--end-group)
 
     nx_generate_nacp(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/mvp05.nacp
-        NAME "MVP Baseball 2005" AUTHOR "mvp-nx" VERSION "0.1.1")
+        NAME "MVP Baseball 2005" AUTHOR "xsaja" VERSION "0.1.1")
     set(ICON ${HOST}/icon.jpg)
     if(EXISTS ${ICON})
         nx_create_nro(mvp05 NACP ${CMAKE_CURRENT_BINARY_DIR}/mvp05.nacp ICON ${ICON})
