@@ -209,7 +209,9 @@ void Core::Create(Device& dev, const CoreConfig& config) {
     const uint32_t n = config_.slots;
     command_memory_ = CreateBlock(n * (config_.command_kb << 10), kUncached, "command memory (per slot)");
     if (pre_) pre_memory_ = CreateBlock(n * (config_.pre_kb << 10), kUncached, "pre-list memory (per slot)");
-    upload_ = CreateBlock(n * (config_.upload_mb << 20), kUncached, "upload ring (per slot)");
+    upload_ = CreateBlock(n * (config_.upload_mb << 20),
+                          config_.upload_cached ? DkMemBlockFlags_CpuCached | DkMemBlockFlags_GpuCached : kUncached,
+                          config_.upload_cached ? "upload ring (per slot, CPU cached)" : "upload ring (per slot)");
     upload_cpu_ = static_cast<uint8_t*>(dkMemBlockGetCpuAddr(upload_));
     upload_gpu_ = dkMemBlockGetGpuAddr(upload_);
     code_ = CreateBlock(config_.code_mb << 20, kUncached | DkMemBlockFlags_Code, "shader code");
@@ -262,7 +264,7 @@ void Core::BeginWork(uint64_t work) {
     }
     for (const ImageMemory& m : s.to_free) ReturnToChunk(chunks_[size_t(m.chunk)], m.offset, m.bytes);
     s.to_free.clear();
-    s.upload_used = 0;
+    s.upload_used = s.upload_flushed = 0;
     // dkCmdBufClear rewinds to the start of the last piece given (deko3d 0.5.0), which belongs to another slot: the
     // slot's first piece is given again, as deko_examples' CCmdMemRing does
     dkCmdBufClear(cmd_);
@@ -319,7 +321,16 @@ DkCmdList Core::ClosePre() {
     return dkCmdBufFinishList(pre_);
 }
 
+void Core::FlushUploads() {
+    Slot& s = slots_[slot_];
+    if (!config_.upload_cached || s.upload_used <= s.upload_flushed) return;
+    const uint32_t base = slot_ * (config_.upload_mb << 20);
+    dkMemBlockFlushCpuCache(upload_, base + s.upload_flushed, s.upload_used - s.upload_flushed);
+    s.upload_flushed = s.upload_used;
+}
+
 void Core::EndWork() {
+    FlushUploads();
     Slot& s = slots_[slot_];
     const DkCmdList pre = ClosePre();
     dkCmdBufSignalFence(cmd_, &s.fence, true);
@@ -333,6 +344,7 @@ void Core::EndWork() {
 }
 
 void Core::SubmitPartial() {
+    FlushUploads();
     const DkCmdList pre = ClosePre();
     if (pre) dev_->Submit(pre, dkCmdBufFinishList(cmd_), "a partial submit");
     else dev_->Submit(dkCmdBufFinishList(cmd_), "a partial submit");

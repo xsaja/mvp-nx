@@ -416,6 +416,7 @@ private:
     bool CreateTexture(Tex& tx, const TextureDesc& d, const FormatInfo& fi, uint64_t key);
     void UploadTexture(Tex& tx, const TextureDesc& d, const FormatInfo& fi, const uint8_t* p, const uint32_t* colours);
     uint32_t StageSampler(const State& s, int i, const DrawTextures& stages, bool clamp);
+    uint32_t StageSamplerMake(const State& s, int i, const DrawTextures& stages, bool clamp);
     void BindState(const State& s, const Assembled& a, const DrawShaders& sh);
     void ClearTarget(Target& t, const State& s, uint32_t count, const uint8_t* rects, uint32_t flags, uint32_t color,
                      float z, uint32_t stencil);
@@ -457,6 +458,29 @@ private:
     uint32_t draw_samples_n_ = 0;
     uint64_t barriers_full_ = 0, barriers_frag_ = 0;
     Image* stage_img_[4] = {};  // the images the stages being bound sample
+    // the last bind of each stage: the same texture header, targets, frame and images give the same binding
+    struct StageMemo {
+        bool valid = false;
+        uint32_t header = 0, palette = 0, words[5] = {};
+        uint64_t frame = 0, dirty = 0, gen = 0;
+        const Target *rt = nullptr, *ds = nullptr;
+        uint32_t view = 0, levels = 1;
+        TexInfo info;
+        DkImageFormat fmt{};
+        bool is_rt = false, blur = false;
+        float k = 1, wide = 0;
+        Image* img = nullptr;
+    };
+    StageMemo stage_memo_[4];
+    bool stage_uncached_ = false;  // the bind read a palette or a feedback copy: not remembered
+    uint64_t bind_gen_ = 1;        // bumped when an image is made or retired
+    struct SamplerMemo {
+        bool valid = false, clamp = false;
+        std::array<uint32_t, kTssCount> tss{};
+        uint32_t levels = 0, func = 0, aniso = 0, slot = 0;
+        uint8_t shadow = 0;
+    };
+    SamplerMemo sampler_memo_[4];
     uint32_t linear_ = 0, point_ = 0;
 
     // the bound render targets, and whether the recorded state is still there
@@ -488,6 +512,7 @@ private:
                  kPhTargets, kPhTextures, kPhConstants, kPhases };
     uint64_t phase_ns_[kPhases] = {};
     uint64_t const_reused_ = 0, const_uploaded_ = 0, upload_bytes_ = 0;
+    uint64_t stage_memo_hits_ = 0, stage_memo_misses_ = 0;
     uint64_t gpu_ns_ = 0, gpu_works_ = 0;
     bool timed_[kSlots] = {};
     uint64_t compiles_ = 0, compile_ns_ = 0;
@@ -511,6 +536,7 @@ bool DekoBackend::Init(uint32_t width, uint32_t height) {
     dk::CoreConfig config;
     config.slots = kSlots;
     config.upload_mb = kUploadMb;
+    config.upload_cached = host::DekoCachedUpload();
     config.command_kb = 2048;
     core_.Create(device_, config);
     free_desc_.clear();
@@ -585,6 +611,7 @@ void DekoBackend::Precompile() {
 
 bool DekoBackend::CreateImage(Image& im, DkImageFormat fmt, uint32_t w, uint32_t h, uint32_t d, uint32_t layers,
                               uint32_t levels, bool render, DkImageType type) {
+    bind_gen_++;
     im = {};
     im.fmt = fmt;
     im.w = w;
@@ -668,6 +695,7 @@ uint32_t DekoBackend::SamplerSlot(const DkSampler& s) {
 // gone once the GPU is past the slot being recorded: its memory and its descriptor
 void DekoBackend::Retire(Image& im) {
     if (!im) return;
+    bind_gen_++;
     if (rend_color_ == &im || rend_depth_ == &im) rendering_ = false, rend_color_ = rend_depth_ = nullptr;
     core_.ReleaseImageLater(im.mem);
     if (im.desc) retired_desc_[work_ % kSlots].push_back(im.desc);
@@ -934,6 +962,25 @@ DkSampler BorderSampler(DkSampler s, uint32_t argb) {
 }
 
 uint32_t DekoBackend::StageSampler(const State& s, int i, const DrawTextures& stages, bool clamp) {
+    SamplerMemo& m = sampler_memo_[i];
+    const auto& tss = s.tss[size_t(i)];
+    uint32_t levels = stages.levels[i], func = s.rs[kRsShadowFunc], aniso_set = app::Get().aniso;
+    uint8_t shadow = stages.info[i].shadow;
+    if (m.valid && m.clamp == clamp && m.levels == levels && m.func == func && m.aniso == aniso_set &&
+        m.shadow == shadow && m.tss == tss)
+        return m.slot;
+    m.valid = true;
+    m.clamp = clamp;
+    m.levels = levels;
+    m.func = func;
+    m.aniso = aniso_set;
+    m.shadow = shadow;
+    m.tss = tss;
+    m.slot = StageSamplerMake(s, i, stages, clamp);
+    return m.slot;
+}
+
+uint32_t DekoBackend::StageSamplerMake(const State& s, int i, const DrawTextures& stages, bool clamp) {
     DkSampler sd;
     dkSamplerDefaults(&sd);
     const auto& t = s.tss[size_t(i)];
@@ -1234,6 +1281,7 @@ uint32_t DekoBackend::BindTargetTexture(const State& s, int stage, const Texture
     }
     stages.fmt[stage] = t.img.fmt;
     if (feedback) {
+        stage_uncached_ = true;
         Image* fb = Feedback(t);
         stage_img_[stage] = fb;
         return fb ? fb->desc : 0;
@@ -1315,6 +1363,7 @@ uint32_t DekoBackend::BindGuestTexture(const State& s, int stage, const TextureD
     TexInfo& info = stages.info[stage];
     StagePalette palette;
     ReadStagePalette(s, stage, d, palette);
+    if (palette.va) stage_uncached_ = true;
     const uint64_t key = uint64_t(palette.va) << 32 | d.data;
     Tex& tx = textures_[key];
     bool same = SameTexture(tx, d);
@@ -1357,7 +1406,48 @@ uint32_t DekoBackend::BindTexture(const State& s, int stage, DrawTextures& stage
 }
 
 bool DekoBackend::BindStageTextures(const State& s, DrawTextures& stages) {
-    for (int i = 0; i < 4; i++) stages.view[i] = BindTexture(s, i, stages);
+    const uint64_t dirty = DirtyEpochNow();
+    for (int i = 0; i < 4; i++) {
+        StageMemo& m = stage_memo_[i];
+        uint32_t header = s.textures[size_t(i)], words[5] = {};
+        if (header) std::memcpy(words, kernel::HostPtr(header), sizeof(words));
+        if (m.valid && m.header == header && m.palette == s.palettes[size_t(i)] && m.frame == presents_ &&
+            m.dirty == dirty && m.gen == bind_gen_ && m.rt == draw_rt_ && m.ds == draw_ds_ &&
+            !std::memcmp(m.words, words, sizeof(words))) {
+            stages.view[i] = m.view;
+            stages.info[i] = m.info;
+            stages.fmt[i] = m.fmt;
+            stages.levels[i] = m.levels;
+            stages.rt[i] = m.is_rt;
+            stages.k[i] = m.k;
+            stages.wide[i] = m.wide;
+            stages.blur[i] = m.blur;
+            stage_img_[i] = m.img;
+            stage_memo_hits_++;
+            continue;
+        }
+        stage_uncached_ = false;
+        stages.view[i] = BindTexture(s, i, stages);
+        m.valid = !stage_uncached_ && dirty == DirtyEpochNow();
+        m.header = header;
+        m.palette = s.palettes[size_t(i)];
+        std::memcpy(m.words, words, sizeof(words));
+        m.frame = presents_;
+        m.dirty = dirty;
+        m.gen = bind_gen_;
+        m.rt = draw_rt_;
+        m.ds = draw_ds_;
+        m.view = stages.view[i];
+        m.info = stages.info[i];
+        m.fmt = stages.fmt[i];
+        m.levels = stages.levels[i];
+        m.is_rt = stages.rt[i];
+        m.k = stages.k[i];
+        m.wide = stages.wide[i];
+        m.blur = stages.blur[i];
+        m.img = stage_img_[i];
+        stage_memo_misses_++;
+    }
     for (int i = 0; i < 4; i++) {
         if (stages.view[i]) continue;
         uint8_t kind = stages.info[i].kind;
@@ -2001,7 +2091,7 @@ void DekoBackend::LogPerf() {
         phase_ns_[i] = 0;
     }
     double reused = const_reused_ + const_uploaded_ ? 100.0 * double(const_reused_) / double(const_reused_ + const_uploaded_) : 0;
-    const_reused_ = const_uploaded_ = upload_bytes_ = 0;
+    const_reused_ = const_uploaded_ = 0;
     LOGR("perf: rt ms a frame: assemble %.2f, targets %.2f, shaders %.2f, textures %.2f, constants %.2f, upload %.2f (%.0f KB), bind %.2f, samplers %.2f, record %.2f; "
          "acquire %.2f, next slot %.2f, present %.2f; constants reused %.0f%%; %llu shaders compiled (%.0f ms); "
          "barriers a frame: %.1f full, %.1f fragment",
@@ -2010,6 +2100,11 @@ void DekoBackend::LogPerf() {
          ph[kPhReset], ph[kPhPresent], reused, (unsigned long long)compiles_, compile_ns_ / 1e6, barriers_full_ / n,
          barriers_frag_ / n);
     compiles_ = compile_ns_ = 0;
+    upload_bytes_ = 0;
+    LOGR("perf: texture stages remembered %.0f%%, upload ring %s",
+         stage_memo_hits_ + stage_memo_misses_ ? 100.0 * double(stage_memo_hits_) / double(stage_memo_hits_ + stage_memo_misses_) : 0.0,
+         core_.config().upload_cached ? "cached" : "uncached");
+    stage_memo_hits_ = stage_memo_misses_ = 0;
     barriers_full_ = barriers_frag_ = 0;
     auto per = [&](std::atomic<uint64_t>& a) { return double(a.exchange(0)) / n; };
     double raw = per(gpu::g_perf_asm_raw), conv = per(gpu::g_perf_asm_converted), listed = per(gpu::g_perf_asm_listed);

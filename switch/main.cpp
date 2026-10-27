@@ -65,11 +65,14 @@ namespace {
 bool g_buttons_by_name = false;
 // renderer in the settings file: "vulkan" (NVK, the default while deko3d is tested) or "deko3d"
 std::string g_renderer = "vulkan";
+// deko3d_cached_upload: the upload ring CPU cached and cleaned before each submit, instead of uncached
+bool g_dk_cached_upload = true;
 }  // namespace
 
 namespace host {
 bool ButtonsByName() { return g_buttons_by_name; }
 bool UseDeko3d() { return g_renderer == "deko3d"; }
+bool DekoCachedUpload() { return g_dk_cached_upload; }
 }  // namespace host
 
 namespace app {
@@ -88,6 +91,7 @@ toml::table Table() {
                   {"anisotropic_filtering", int64_t(s.aniso)},
                   {"buttons_by_name", g_buttons_by_name},
                   {"renderer", g_renderer},
+                  {"deko3d_cached_upload", g_dk_cached_upload},
                   {"render_spin_us", int64_t(gpu::g_render_spin_us.load())},
                   {"draw_copy", gpu::g_draw_copy.load()},
                   {"saltynx", g_saltynx},
@@ -138,6 +142,7 @@ void Load() {
     g_buttons_by_name = t["buttons_by_name"].value_or(g_buttons_by_name);
     g_renderer = t["renderer"].value_or(g_renderer);
     if (g_renderer != "deko3d") g_renderer = "vulkan";
+    g_dk_cached_upload = t["deko3d_cached_upload"].value_or(g_dk_cached_upload);
     gpu::g_render_spin_us = std::min<uint32_t>(t["render_spin_us"].value_or(gpu::g_render_spin_us.load()), 2000);
     gpu::g_draw_copy = t["draw_copy"].value_or(gpu::g_draw_copy.load());
     g_saltynx = t["saltynx"].value_or(g_saltynx);

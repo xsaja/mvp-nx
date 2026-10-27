@@ -15,6 +15,10 @@ fps_cap = 60
 # en la GPU; la primera vez compila sus shaders al arrancar, unos segundos). Si algo se ve mal, vuelve a "vulkan".
 renderer = "vulkan"
 
+# Solo con deko3d: true (por defecto) copia los datos de cada dibujo a memoria con cache (mas rapido).
+# Si con deko3d salen figuras rotas o parpadeos, prueba false.
+deko3d_cached_upload = true
+
 # Sincronia vertical (evita cortes en la imagen).
 vsync = true
 

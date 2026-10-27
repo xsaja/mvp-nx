@@ -84,6 +84,7 @@ private:
 struct CoreConfig {
     uint32_t slots = 3;              // work slots: the CPU records one while the GPU runs the others
     uint32_t upload_mb = 64;         // per slot: vertices, indices, constants, texture uploads
+    bool upload_cached = false;      // the ring CPU cached, cleaned to memory before each submit
     uint32_t command_kb = 4096;      // per slot (it grows past this with extra blocks)
     uint32_t pre_kb = 0;             // per slot, the pre-list (Pre()); 0 = none
     uint32_t code_mb = 32;           // shader code (DKSH), bump allocated
@@ -154,6 +155,8 @@ public:
     uint64_t FenceWaitNs() const { return fence_wait_ns_; }
     // submits what is recorded so far in the middle of a slot (without its fence) and keeps recording
     void SubmitPartial();
+    // a cached ring: what the CPU wrote since the last clean reaches memory
+    void FlushUploads();
     void WaitGpu() { dev_->WaitIdle(); }
 
     // ---- Memory
@@ -196,6 +199,7 @@ private:
         DkFence fence{};
         bool fenced = false;
         uint32_t upload_used = 0;
+        uint32_t upload_flushed = 0;  // cleaned up to here
         SlotMemory commands, pre;
         std::vector<ImageMemory> to_free;
     };
