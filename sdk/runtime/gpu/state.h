@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <memory>
@@ -187,21 +188,31 @@ struct State {
     float zscale = 16777215.0f;  // depth buffer units per 1.0
 };
 
-// MVP05: the 64 byte blocks of State::simple (8 KB) and State::vsc (3 KB) written since the render thread last sent
-// them. With g_track_state on, the render thread compares only those blocks instead of 11 KB on every draw; every
-// write to g_state.simple and g_state.vsc goes through TouchSimple / TouchVsc (d3d8.cpp, texture.cpp).
+// MVP05: the 64 byte blocks of State written since the render thread last sent them. With g_track_state on, the
+// render thread compares only those instead of ~13 KB on every draw; every write to g_state goes through
+// TouchState (d3d8.cpp, texture.cpp). Its own copies (textures, palettes, streams, targets) are compared apart.
 inline bool g_track_state = false;
-inline uint64_t g_dirty_simple[2] = {~0ull, ~0ull};
-inline uint64_t g_dirty_vsc = ~0ull;
-inline void TouchSimple(uint32_t index) {
-    uint32_t b = (index >> 4) & 127;
-    g_dirty_simple[b >> 6] |= 1ull << (b & 63);
-}
-inline void TouchVsc(uint32_t reg, uint32_t n = 1) {
-    for (uint32_t r = reg; r < reg + n && r < 192; r++) g_dirty_vsc |= 1ull << (r >> 2);
+constexpr size_t kStateBlocks = (sizeof(State) + 63) / 64;
+inline uint64_t g_state_dirty[(kStateBlocks + 63) / 64];
+inline void TouchState(const State& s, const void* field, size_t n) {
+    size_t at = size_t(static_cast<const uint8_t*>(field) - reinterpret_cast<const uint8_t*>(&s));
+    if (!n || at + n > sizeof(State)) return;
+    for (size_t b = at / 64, last = (at + n - 1) / 64; b <= last; b++) g_state_dirty[b >> 6] |= 1ull << (b & 63);
 }
 inline void TouchAllState() {
-    g_dirty_simple[0] = g_dirty_simple[1] = g_dirty_vsc = ~0ull;
+    for (uint64_t& w : g_state_dirty) w = ~0ull;
+}
+inline bool StateDirty(size_t at, size_t n) {
+    for (size_t b = at / 64, last = (at + n - 1) / 64; b <= last; b++)
+        if ((g_state_dirty[b >> 6] >> (b & 63)) & 1) return true;
+    return false;
+}
+inline void CleanState() {
+    for (uint64_t& w : g_state_dirty) w = 0;
+}
+inline void TouchSimple(const State& s, uint32_t index) { TouchState(s, &s.simple[index & 0x7FF], 4); }
+inline void TouchVsc(const State& s, uint32_t reg, uint32_t n = 1) {
+    if (reg < 192) TouchState(s, &s.vsc[reg], 16 * std::min<size_t>(n, 192 - reg));
 }
 
 }  // namespace gpu

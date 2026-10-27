@@ -17,6 +17,7 @@
 #endif
 
 #include <algorithm>
+#include <bit>
 #include <chrono>
 #include <condition_variable>
 #include <cstring>
@@ -134,6 +135,8 @@ class Threaded final : public Backend {
 public:
     explicit Threaded(std::unique_ptr<Backend> inner) : inner_(std::move(inner)), ranges_(StateRanges()) {
         ring_ = mem::AllocSystem(kHeaderRing, 64);
+        if (std::getenv("MVP05_TRACK_STATE")) g_track_state = true;  // off the Switch: on by the environment
+        TouchAllState();
         cur_ = NewBatch();
         std::thread([this] { Run(); }).detach();
     }
@@ -172,6 +175,7 @@ public:
         (void)env_copy;
         bool copied = g_draw_copy.load(std::memory_order_relaxed) && CopyVertices(s, c, indices);
         g_perf_rec_copy_ns += Ns(t_state);
+        auto t_uses = Clock::now();
         cur_->cmds.push_back(c);
         for (uint32_t tex : s.textures) Use(tex);
         for (uint32_t pal : s.palettes) Use(pal);
@@ -179,6 +183,8 @@ public:
         Use(s.rt.header);
         Use(s.zs.header);
         Written(s.rt);
+        prof_.uses += Ns(t_uses);
+        prof_.draws++;
         if (cur_->cmds.size() >= kBatchCommands) Submit();
         // Diagnostic only: distinguish reused guest vertex memory from decode/state errors.
         static const bool sync_draws = std::getenv("MVP05_SYNC_DRAWS") != nullptr;
@@ -243,6 +249,7 @@ public:
         c.s1.header = Header(front.header);
         cur_->cmds.push_back(c);
         Use(front.header);
+        LogProfile();
         uint64_t id = Submit();
         g_perf_capture_ns += Ns(t);
         // the title records one frame while the one before it draws
@@ -309,6 +316,20 @@ private:
         return b;
     }
 
+    // MVP05: every 10 s, the title thread's cost per draw: state ranges, headers and deltas, uses; bytes of state sent
+    struct Profile {
+        uint64_t ranges = 0, headers = 0, uses = 0, state_bytes = 0, draws = 0;
+        Clock::time_point since = Clock::now();
+    } prof_;
+    void LogProfile() {
+        if (Clock::now() - prof_.since < std::chrono::seconds(10) || !prof_.draws) return;
+        double d = double(prof_.draws);
+        LOGR("perf: title thread per draw: state ranges %.2f us, headers and deltas %.2f us, uses %.2f us; %.0f bytes of "
+             "state sent; %.0f draws", prof_.ranges / d / 1e3, prof_.headers / d / 1e3, prof_.uses / d / 1e3,
+             prof_.state_bytes / d, d);
+        prof_ = {};
+    }
+
     // the draw's vertex spans into the batch; false (nothing taken) when one is too big or not in guest memory
     bool CopyVertices(const State& s, Cmd& c, const uint8_t* indices) {
         constexpr uint32_t kMaxCopy = 1u << 20;
@@ -340,6 +361,7 @@ private:
 
     void ReadBack(uint32_t data, bool late) {
         // only surfaces the GPU wrote since the last read-back hold anything newer than guest memory
+        if (data == last_written_) last_written_ = 0;
         if (!written_.erase(data)) return;
         (late ? g_perf_sync_late : g_perf_sync_block)++;
         if (diag::Perf() && logged_.insert(uint64_t(data) << 1 | (late ? 1 : 0)).second)
@@ -393,23 +415,30 @@ private:
     // what changed since the last command, in 64 byte pieces
     void SendState(const State& s) {
         const uint8_t* now = reinterpret_cast<const uint8_t*>(&s);
+        auto t_send = Clock::now();
         Cmd c{Op::State};
         size_t first = cur_->bytes.size();
         // MVP05: blocks of simple and vsc nobody wrote since the last send are equal to what was sent
         const bool track = g_track_state;
-        const size_t simple_at = At(s, &s.simple), simple_end = simple_at + sizeof(s.simple);
-        const size_t vsc_at = At(s, &s.vsc), vsc_end = vsc_at + sizeof(s.vsc);
-        for (const Range& r : ranges_)
-            for (size_t off = r.off, end = r.off + r.len; off < end; off += 64) {
-                if (track && off >= simple_at && off < simple_end) {
-                    size_t b = (off - simple_at) / 64;
-                    if (!((g_dirty_simple[b >> 6] >> (b & 63)) & 1)) continue;
-                } else if (track && off >= vsc_at && off < vsc_end) {
-                    if (!((g_dirty_vsc >> ((off - vsc_at) / 64)) & 1)) continue;
+        const uint8_t* sent = reinterpret_cast<const uint8_t*>(&sent_);
+        if (track) {
+            // straight to the written blocks, each cut to the ranges it overlaps
+            for (size_t w = 0; w < std::size(g_state_dirty); w++)
+                for (uint64_t bits = g_state_dirty[w]; bits; bits &= bits - 1) {
+                    size_t b0 = (w * 64 + size_t(std::countr_zero(bits))) * 64, b1 = b0 + 64;
+                    for (const Range& r : ranges_) {
+                        size_t lo = std::max(b0, r.off), hi = std::min(b1, r.off + r.len);
+                        if (lo < hi) Delta(sent + lo, now + lo, hi - lo);
+                    }
                 }
-                Delta(reinterpret_cast<const uint8_t*>(&sent_) + off, now + off, std::min<size_t>(64, end - off));
-            }
-        g_dirty_simple[0] = g_dirty_simple[1] = g_dirty_vsc = 0;
+        } else {
+            for (const Range& r : ranges_)
+                for (size_t off = r.off, end = r.off + r.len; off < end; off += 64)
+                    Delta(sent + off, now + off, std::min<size_t>(64, end - off));
+        }
+        CleanState();
+        auto t_ranges = Clock::now();
+        prof_.ranges += uint64_t(std::chrono::duration_cast<std::chrono::nanoseconds>(t_ranges - t_send).count());
         std::array<uint32_t, 4> textures;
         for (size_t i = 0; i < 4; i++) textures[i] = Header(s.textures[i]);
         Delta(&sent_.textures, &textures, sizeof(textures));
@@ -434,6 +463,8 @@ private:
             c.ps = int32_t(cur_->ps.size());
             cur_->ps.push_back(s.ps);
         }
+        prof_.headers += Ns(t_ranges);
+        prof_.state_bytes += cur_->bytes.size() - first;
         if (cur_->bytes.size() == first && c.vs < 0 && c.ps < 0) return;
         c.data = uint32_t(first);
         c.size = uint32_t(cur_->bytes.size() - first);
@@ -448,7 +479,11 @@ private:
         *r.value = cur_->id;
     }
     void Written(const Surface& s) {
-        if (s.header) written_.insert(mem::VirtualFromPhysical(s.data));
+        if (!s.header) return;
+        uint32_t data = mem::VirtualFromPhysical(s.data);
+        if (data == last_written_) return;  // draws into the same target, one after another
+        written_.insert(data);
+        last_written_ = data;
     }
 
     uint64_t Submit() {
@@ -598,6 +633,7 @@ private:
     State sent_;  // the state as the render thread will have it
     std::unordered_map<uint32_t, uint64_t> last_use_;
     std::unordered_set<uint32_t> written_;  // surfaces drawn since their last read-back, by data address
+    uint32_t last_written_ = 0;             // in written_ already
     std::unordered_set<uint64_t> logged_;   // perf diagnostic: read-backs named once, by address and kind
     uint64_t next_id_ = 0, last_present_ = 0;
 
