@@ -103,6 +103,8 @@ if(HAVE_GEN)
         "-O2;-w;-fno-strict-aliasing;-fsigned-char;-ffp-contract=off")
     add_executable(mvp05 ${HOST_SOURCES} ${GEN_SOURCES} ${IMGUI_SOURCES} ${HOST}/switch_elf_stubs.c)
     add_dependencies(mvp05 build_stamp)
+    # explicit edge: ninja did not rebuild main.cpp on a new stamp through the depfile alone
+    set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/main.cpp PROPERTIES OBJECT_DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/build_stamp.h)
     set_target_properties(mvp05 PROPERTIES OUTPUT_NAME mvp05)
     target_include_directories(mvp05 PRIVATE ${HOST_INCLUDES})
     target_include_directories(mvp05 SYSTEM PRIVATE ${THIRD}/imgui)
