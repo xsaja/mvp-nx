@@ -88,6 +88,14 @@ struct HostElement {
     uint8_t bytes = 0;
 };
 HostElement HostFormat(uint32_t type) {
+    if (g_packed_strides.load(std::memory_order_relaxed)) {
+        switch (type) {
+            case 0x31: return {kFormatR16G16B16Snorm, kDecodeW1, 6};
+            case 0x35: return {kFormatR16G16B16Sint, kDecodeIntW1, 6};
+            case 0x34: return {kFormatR8G8B8Unorm, kDecodeW1, 3};
+            default: break;
+        }
+    }
     switch (type) {
         case 0x12: return {DXGI_FORMAT_R32_FLOAT, kDecodeNone, 4};
         case 0x22: return {DXGI_FORMAT_R32G32_FLOAT, kDecodeNone, 8};
@@ -289,6 +297,11 @@ bool RawReadable(const State& s, const Inputs& inputs) {
         uint32_t stride = StrideOf(s, inputs.layout, in);
         bool readable = he.format && stride && stride % kStrideAlign == 0 && in.offset < kElementOffsetEnd &&
                         in.offset % std::min<uint32_t>(he.bytes, 4) == 0;
+        if (g_packed_strides.load(std::memory_order_relaxed) && he.format && stride && in.offset < kElementOffsetEnd) {
+            // MVP05: a stride and offset its components divide (16 bit components: even; bytes: any)
+            uint32_t kind = in.type & 15, comp = kind == 1 || kind == 5 ? 2 : kind == 4 ? 1 : 4;
+            readable = stride % comp == 0 && in.offset % comp == 0;
+        }
         if (!readable) {
             // MVP05: in every log (a few lines), the reason a draw's vertices are converted on the CPU
             static std::atomic<int> logged{0};

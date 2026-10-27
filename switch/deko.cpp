@@ -185,6 +185,10 @@ void VertexFormat(uint32_t dxgi, DkVtxAttribState& a) {
         case DXGI_FORMAT_R8G8_UNORM: a.size = DkVtxAttribSize_2x8, a.type = DkVtxAttribType_Unorm; break;
         case DXGI_FORMAT_R8_UNORM: a.size = DkVtxAttribSize_1x8, a.type = DkVtxAttribType_Unorm; break;
         case DXGI_FORMAT_B8G8R8A8_UNORM: a.size = DkVtxAttribSize_4x8, a.type = DkVtxAttribType_Unorm, a.isBgra = 1; break;
+        // MVP05: the three-component ones vertex.cpp keeps raw for g_packed_strides (w reads as 1)
+        case kFormatR16G16B16Snorm: a.size = DkVtxAttribSize_3x16, a.type = DkVtxAttribType_Snorm; break;
+        case kFormatR16G16B16Sint: a.size = DkVtxAttribSize_3x16, a.type = DkVtxAttribType_Sint; break;
+        case kFormatR8G8B8Unorm: a.size = DkVtxAttribSize_3x8, a.type = DkVtxAttribType_Unorm; break;
         default: a.size = DkVtxAttribSize_4x32, a.type = DkVtxAttribType_Float; break;
     }
 }
@@ -501,6 +505,7 @@ bool DekoBackend::Init(uint32_t width, uint32_t height) {
     vkshader::Init(cache_dir_);
     compiler_.Start();
     gpu::g_native_polygons = true;  // fans, quads and polygons drawn as they are, without a rebuilt triangle list
+    gpu::g_packed_strides = true;   // 6 and 3 byte vertices read as they are, not converted on the CPU
     device_.Create(false);  // ZCULL off until checked (NFSMW-NX's item 6)
     dk::CoreConfig config;
     config.slots = kSlots;

@@ -59,6 +59,11 @@ struct Assembled {
 // MVP05: the backend draws line loops, fans, quads, quad strips and polygons itself (deko3d does, Vulkan does not):
 // raw-vertex draws of them keep their own vertices and indices instead of a rebuilt triangle list
 inline std::atomic<bool> g_native_polygons{false};
+// MVP05: the backend reads vertex buffers of any stride a component divides, and three-component 16 and 8 bit
+// elements as they are (deko3d does; Vulkan, D3D12 and their dword strides do not): SHORT3, NORMSHORT3 and PBYTE3 in
+// 6 or 3 byte vertices stay raw instead of being converted on the CPU. Formats DXGI has no name for:
+inline std::atomic<bool> g_packed_strides{false};
+constexpr uint8_t kFormatR16G16B16Snorm = 0xF0, kFormatR16G16B16Sint = 0xF1, kFormatR8G8B8Unorm = 0xF2;
 // MVP05 perf: draws assembled from raw vertices, converted on the CPU, given a rebuilt index list; vertices converted
 inline std::atomic<uint64_t> g_perf_asm_raw{0}, g_perf_asm_converted{0}, g_perf_asm_listed{0}, g_perf_asm_vertices{0};
 
