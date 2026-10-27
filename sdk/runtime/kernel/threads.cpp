@@ -81,6 +81,10 @@ void MarkExited(Thread& t, uint32_t code) {
     SignalChanged();
 }
 
+#ifdef __SWITCH__
+extern "C" void mvp_profile_thread(const char* name) __attribute__((weak));
+#endif
+
 void NameHostThread(const char* name) {
 #ifdef _WIN32
     wchar_t w[64];
@@ -91,7 +95,8 @@ void NameHostThread(const char* name) {
     static Fn set = reinterpret_cast<Fn>(reinterpret_cast<void*>(GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "SetThreadDescription")));
     if (set) set(GetCurrentThread(), w);
 #elif defined(__SWITCH__)
-    (void)name;  // newlib has no pthread_setname_np
+    // newlib has no pthread_setname_np; the Switch layer's profiler keeps the name and handle (switch/profiler.cpp)
+    if (mvp_profile_thread) mvp_profile_thread(name);
 #else
     pthread_setname_np(pthread_self(), name);
 #endif

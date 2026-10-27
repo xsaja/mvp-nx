@@ -69,6 +69,8 @@ std::string g_renderer = "deko3d";
 bool g_dk_cached_upload = true;
 // texture_check_frames: a texture nobody locked is hashed whole once in this many frames, sampled in the others
 uint32_t g_texture_check_frames = 8;
+// profile: the sampling profiler (profiler.cpp) writes logs/prof.bin
+bool g_profile = false;
 }  // namespace
 
 namespace host {
@@ -100,6 +102,7 @@ toml::table Table() {
                   {"render_spin_us", int64_t(gpu::g_render_spin_us.load())},
                   {"draw_copy", gpu::g_draw_copy.load()},
                   {"saltynx", g_saltynx},
+                  {"profile", g_profile},
                   {"reuse_constants", gpu::g_reuse_constants.load()},
                   {"cpu_mhz", int64_t(host::ClockWanted("cpu"))},
                   {"gpu_mhz", int64_t(host::ClockWanted("gpu"))},
@@ -154,6 +157,7 @@ void Load() {
     gpu::g_render_spin_us = std::min<uint32_t>(t["render_spin_us"].value_or(gpu::g_render_spin_us.load()), 2000);
     gpu::g_draw_copy = t["draw_copy"].value_or(gpu::g_draw_copy.load());
     g_saltynx = t["saltynx"].value_or(g_saltynx);
+    g_profile = t["profile"].value_or(g_profile);
     gpu::g_reuse_constants = t["reuse_constants"].value_or(gpu::g_reuse_constants.load());
     for (const char* c : {"cpu", "gpu", "mem"})
         host::SetClockWanted(c, t[std::string(c) + "_mhz"].value_or(host::ClockWanted(c)));
@@ -358,6 +362,7 @@ int main(int, char**) {
     g_docked = host::OverlaysDocked(g_op_mode == AppletOperationMode_Console);
     app::LogSystem();
     host::ApplyClocks();
+    if (g_profile) host::StartProfiler();
 
     if (!TitleMode()) {
         Fatal("MVP Baseball 2005 necesita el modo titulo. Abre hbmenu manteniendo R mientras inicias cualquier "

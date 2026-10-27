@@ -131,6 +131,10 @@ bool Same(const uint8_t* a, const uint8_t* b, size_t n) {
 using Clock = std::chrono::steady_clock;
 uint64_t Ns(Clock::time_point t) { return uint64_t(std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now() - t).count()); }
 
+#ifdef __SWITCH__
+extern "C" void mvp_profile_thread(const char* name) __attribute__((weak));  // switch/profiler.cpp
+#endif
+
 class Threaded final : public Backend {
 public:
     explicit Threaded(std::unique_ptr<Backend> inner) : inner_(std::move(inner)), ranges_(StateRanges()) {
@@ -526,6 +530,8 @@ private:
         if (auto set = reinterpret_cast<SetDescription>(
                 reinterpret_cast<void*>(GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "SetThreadDescription"))))
             set(GetCurrentThread(), L"render");
+#else
+        if (mvp_profile_thread) mvp_profile_thread("render");
 #endif
         for (;;) {
             Batch* b;

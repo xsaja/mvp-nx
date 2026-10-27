@@ -27,6 +27,10 @@ texture_check_frames = 8
 # (menos trabajo para la CPU). Si algo se ve con colores, transparencias o posiciones raras, prueba false.
 state_tracking = true
 
+# Medicion (para el desarrollo): true anota cada milisegundo que funcion ejecuta el juego en logs/prof.bin.
+# Cuesta un poco de rendimiento; dejalo en false para jugar.
+profile = false
+
 # Sincronia vertical (evita cortes en la imagen).
 vsync = true
 
