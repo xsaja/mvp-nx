@@ -6,6 +6,7 @@
 #include "app/app.h"
 #include "audio/audio.h"
 #include "core/input.h"
+#include "gpu/backend.h"
 #include "kernel/kernel.h"
 
 #ifdef _WIN32
@@ -254,6 +255,7 @@ void Shutdown(int code) {
     audio::StopOutput();
 #ifdef __SWITCH__
     input::Stop();
+    gpu::StopRendering();
 #endif
     LOGR("Exit (%d)", code);
     logx::Flush();

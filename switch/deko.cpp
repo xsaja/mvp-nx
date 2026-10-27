@@ -51,6 +51,13 @@ namespace {
 
 #include "gfx_common.h"
 
+// the gate StopRendering closes at exit: every public entry holds it while it records, and does nothing once closed
+std::mutex g_gate;
+bool g_stopped = false;
+#define DK_GATE()                  \
+    std::lock_guard gate_(g_gate); \
+    if (g_stopped) return
+
 constexpr uint32_t kSlots = 3;
 constexpr uint32_t kUploadMb = 32;   // per slot: vertices, indices, constants, texture staging
 constexpr uint32_t kUboRange = 3072;  // b0 and b1: 192 vertex constants, DrawConstants under it
@@ -309,7 +316,10 @@ public:
     void SyncLate(uint32_t data) override;
     bool DeliverLate(uint32_t data) override;
     void RecordLate(uint32_t data) override;
-    void Flush() override { Submit(true); }
+    void Flush() override {
+        DK_GATE();
+        Submit(true);
+    }
     void SetGamma(const uint8_t* ramp) override {
         std::memcpy(ramp_, ramp, sizeof(ramp_));
         ramp_dirty_ = true;
@@ -396,6 +406,7 @@ private:
     void ApplySettings();
     void ReadTiming(uint32_t slot);
     void SaveShot(Target& t);
+    void SyncLocked(uint32_t data);
     void LogPerf();
 
     dk::Device device_;
@@ -1375,6 +1386,7 @@ void DekoBackend::BindState(const State& s, const Assembled& a, const DrawShader
 }
 
 void DekoBackend::Draw(const State& s, uint32_t prim, uint32_t start, uint32_t count, const uint8_t* indices) {
+    DK_GATE();
     if (DepthCopy(s)) return;
     uint64_t t = TickNs(), t2;
     auto phase = [&](Phase p) {
@@ -1536,6 +1548,7 @@ void DekoBackend::ClearTarget(Target& t, const State& s, uint32_t count, const u
 
 void DekoBackend::Clear(const State& s, uint32_t count, const uint8_t* rects, uint32_t flags, uint32_t color, float z,
                         uint32_t stencil) {
+    DK_GATE();
     Target* rt = (flags & kClearTarget) ? EnsureTarget(s.rt, false) : nullptr;
     Target* ds = (flags & (kClearZ | kClearStencil)) ? EnsureTarget(s.zs, true) : nullptr;
     for (Target* t : {rt, ds})
@@ -1543,6 +1556,7 @@ void DekoBackend::Clear(const State& s, uint32_t count, const uint8_t* rects, ui
 }
 
 void DekoBackend::Copy(const Surface& src, const Surface& dst, uint32_t count, uint32_t src_rects, uint32_t dst_points) {
+    DK_GATE();
     Target* src_t = FindTarget(src, false);
     if (!src_t || !src_t->drawn) {
         if (!CopySurfaceMemory(src, dst, count, src_rects, dst_points)) {
@@ -1593,6 +1607,11 @@ void DekoBackend::Copy(const Surface& src, const Surface& dst, uint32_t count, u
 // ---- read-backs
 
 void DekoBackend::Sync(uint32_t data, uint32_t) {
+    DK_GATE();
+    SyncLocked(data);
+}
+
+void DekoBackend::SyncLocked(uint32_t data) {
     auto it = targets_.find(TargetMapKey(data, false));
     if (it == targets_.end() || !it->second.drawn) return;
     Target& t = it->second;
@@ -1616,6 +1635,8 @@ void DekoBackend::SyncLate(uint32_t data) {
 }
 
 bool DekoBackend::DeliverLate(uint32_t data) {
+    std::lock_guard gate(g_gate);
+    if (g_stopped) return false;
     std::lock_guard lock(late_lock_);
     auto it = late_.find(data);
     if (it == late_.end()) return false;
@@ -1641,6 +1662,7 @@ bool DekoBackend::DeliverLate(uint32_t data) {
 }
 
 void DekoBackend::RecordLate(uint32_t data) {
+    DK_GATE();
     auto it = targets_.find(TargetMapKey(data, false));
     if (it == targets_.end()) return;
     Target& t = it->second;
@@ -1817,6 +1839,7 @@ void DekoBackend::SaveShot(Target& t) {
 }
 
 void DekoBackend::Present(const Surface& front) {
+    DK_GATE();
     Target* t = EnsureTarget(front, false);
     if (t && LatchCpuWrite(*t)) UploadTarget(*t, front);
     if (t && gpu::g_screenshot.exchange(false)) SaveShot(*t);
@@ -1896,5 +1919,10 @@ void DekoBackend::LogPerf() {
 }  // namespace
 
 std::unique_ptr<Backend> CreateDekoBackend() { return std::make_unique<DekoBackend>(); }
+
+void StopRendering() {
+    std::lock_guard lock(g_gate);
+    g_stopped = true;
+}
 
 }  // namespace gpu

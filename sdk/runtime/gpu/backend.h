@@ -56,6 +56,12 @@ private:
 std::unique_ptr<Backend> CreateBackend();
 // the same backend driven from a thread of its own: calls return once recorded
 std::unique_ptr<Backend> CreateThreadedBackend(std::unique_ptr<Backend> inner);
+#ifdef __SWITCH__
+// before the process ends: libnx closes the display and the GPU on exit while the render thread may still present,
+// and deko3d ends the process on a failed call (the console's "closed because of an error"). Waits out the call under
+// way; every later one returns at once
+void StopRendering();
+#endif
 
 // perf diagnostic: the title's thread recording for the render thread, and waiting on it
 inline std::atomic<uint64_t> g_perf_capture_ns{0}, g_perf_wait_ns{0}, g_perf_waits{0};
