@@ -63,8 +63,8 @@ void WindowPixels(int& w, int& h) {
 namespace {
 // buttons_by_name in the settings file: false (default) maps the face buttons by position, true by their letter
 bool g_buttons_by_name = false;
-// renderer in the settings file: "vulkan" (NVK, the default while deko3d is tested) or "deko3d"
-std::string g_renderer = "vulkan";
+// renderer in the settings file: "deko3d" (the console's own API, the default) or "vulkan" (NVK)
+std::string g_renderer = "deko3d";
 // deko3d_cached_upload: the upload ring CPU cached and cleaned before each submit, instead of uncached
 bool g_dk_cached_upload = true;
 // texture_check_frames: a texture nobody locked is hashed whole once in this many frames, sampled in the others
@@ -147,7 +147,7 @@ void Load() {
     s.aniso = t["anisotropic_filtering"].value_or(s.aniso);
     g_buttons_by_name = t["buttons_by_name"].value_or(g_buttons_by_name);
     g_renderer = t["renderer"].value_or(g_renderer);
-    if (g_renderer != "deko3d") g_renderer = "vulkan";
+    if (g_renderer != "vulkan") g_renderer = "deko3d";
     g_dk_cached_upload = t["deko3d_cached_upload"].value_or(g_dk_cached_upload);
     gpu::g_track_state = t["state_tracking"].value_or(gpu::g_track_state);
     g_texture_check_frames = std::clamp<uint32_t>(t["texture_check_frames"].value_or(g_texture_check_frames), 1, 60);

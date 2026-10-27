@@ -11,9 +11,9 @@ render_percent = 100
 # (lineas "perf:").
 fps_cap = 60
 
-# Motor grafico: "vulkan" (NVK, el de siempre) o "deko3d" (el nativo de la Switch, en pruebas: mas rapido
-# en la GPU; la primera vez compila sus shaders al arrancar, unos segundos). Si algo se ve mal, vuelve a "vulkan".
-renderer = "vulkan"
+# Motor grafico: "deko3d" (por defecto: el nativo de la Switch, el mas rapido; la primera vez compila sus shaders
+# al arrancar, unos segundos) o "vulkan" (NVK, el de las versiones 0.1.x). Si algo se ve mal, prueba "vulkan".
+renderer = "deko3d"
 
 # Solo con deko3d: true (por defecto) copia los datos de cada dibujo a memoria con cache (mas rapido).
 # Si con deko3d salen figuras rotas o parpadeos, prueba false.

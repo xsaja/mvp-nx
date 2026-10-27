@@ -25,7 +25,8 @@ TGP482's **[XboxXBE-Recomp](https://github.com/TGP482/XboxXBE-Recomp)** recompil
 
 - Boot, movies, menus, music and sound.
 - Full exhibition games, tested on the console.
-- A 60 fps cap by default: 45–57 fps in a game. With `fps_cap = 30`, a fully steady 30 fps.
+- A 60 fps cap by default: with deko3d, handheld, a game runs at 57–60 fps most of the time (53–56 in the busiest
+  scenes, a steady 60 with the CPU at 1785 MHz). With `fps_cap = 30`, a fully steady 30 fps.
 - 1280×720 handheld and 1920×1080 docked, switching on its own.
 - Up to 4 controllers, with rumble.
 - FPS and resolution in Status Monitor / Horizon OC Monitor, and handheld/docked mode from ReverseNX-RT (these need
@@ -90,7 +91,8 @@ The settings are in `mvp05-settings.toml`, next to the NRO. The file explains ea
 
 | Setting | Effect |
 |---|---|
-| `fps_cap = 30` | A fully steady 30 fps instead of the 60 cap (45–57 fps in a game). |
+| `fps_cap = 30` | A fully steady 30 fps instead of the 60 cap. |
+| `renderer = "vulkan"` | Goes back to the Vulkan (NVK) renderer instead of deko3d, if something looks wrong. |
 | `render_percent = 75` | Lowers the internal resolution, in case the game is slow. |
 | `cpu_mhz`, `gpu_mhz`, `mem_mhz` | Raises the clocks while the game runs (official caps: 1785, 921, 1600). Leave them at 0 if you use Horizon OC or sys-clk. |
 | `buttons_by_name = true` | Maps the buttons by letter instead of by position. |
@@ -145,7 +147,7 @@ The web installer is in `installer/`. To test it locally:
 
 | Path | What |
 |---|---|
-| `switch/` | The Switch layer: startup, settings, log, Vulkan/NVK, audio, controllers, clocks, overlays |
+| `switch/` | The Switch layer: startup, settings, log, deko3d and Vulkan/NVK, audio, controllers, clocks, overlays |
 | `sdk/` | The recompilation SDK (MVP's and TGP482's) with the Switch patches |
 | `game/` | The recompiler's configuration and the game's own code (hooks, scripted pad) |
 | `pc/` | Windows builds for comparing Vulkan with D3D12 |
