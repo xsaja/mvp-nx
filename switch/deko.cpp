@@ -207,6 +207,9 @@ struct Image {
     uint32_t w = 1, h = 1, d = 1, layers = 1, levels = 1;
     bool depth = false, stencil = false;
     uint32_t desc = 0;  // its slot in the image descriptor table (sampled: every level), 0 = none
+    // hazard tracking against the backend's barrier epoch: last written (by a draw, or by a copy or upload) and last
+    // sampled; equal to the current epoch means since the last barrier
+    uint64_t drawn = 0, copied = 0, sampled = 0;
     explicit operator bool() const { return mem.block != nullptr; }
 };
 
@@ -362,7 +365,10 @@ private:
     void BeginRender(Image* color, Image* depth);
     void SetViewport(float x, float y, float w, float h);
     void SetScissor(int32_t x0, int32_t y0, int32_t x1, int32_t y1);
-    void FlushDescriptors();
+    void Barrier();
+    void Sample(Image& im);
+    void BeforeCopy(Image* src, Image* dst);
+    void AfterCopy(Image& dst);
 
     // shaders
     const DkShader* Module(const std::string& src, const char* entry, vkshader::Stage stage, uint64_t& hash);
@@ -428,6 +434,13 @@ private:
     std::unordered_map<uint64_t, uint32_t> samplers_;
     uint32_t next_sampler_ = 0;
     bool desc_dirty_ = false;
+    // hazard tracking (Hazard, Barrier): the barrier epoch, what the next draw needs, the images it samples
+    uint64_t epoch_ = 1;
+    bool need_full_ = false, need_frag_ = false;
+    Image* draw_samples_[4] = {};
+    uint32_t draw_samples_n_ = 0;
+    uint64_t barriers_full_ = 0, barriers_frag_ = 0;
+    Image* stage_img_[4] = {};  // the images the stages being bound sample
     uint32_t linear_ = 0, point_ = 0;
 
     // the bound render targets, and whether the recorded state is still there
@@ -697,7 +710,6 @@ void DekoBackend::BeginWork() {
     // the slot's GPU time: a timestamp at its start, one at its end (Submit)
     dkCmdBufReportCounter(Cb(), DkCounter_Timestamp, core_.QueriesGpu() + slot * 32);
     timed_[slot] = true;
-    desc_dirty_ = true;
 }
 
 void DekoBackend::ReadTiming(uint32_t slot) {
@@ -736,23 +748,57 @@ uint64_t DekoBackend::Completed() {
     return completed_;
 }
 
-// before a draw samples what was written: fragments done and the texture cache dropped; full: the copy engines too
+// A barrier now: what was recorded before is done (fragments; full: every engine, the copies too) and the image cache
+// dropped, the descriptor cache too when descriptors were written (that needs every engine idle). A new epoch starts.
 void DekoBackend::Hazard(bool full) {
-    dkCmdBufBarrier(Cb(), full ? DkBarrier_Full : DkBarrier_Fragments, DkInvalidateFlags_Image);
-}
-
-void DekoBackend::FlushDescriptors() {
-    core_.InvalidateCodeIfNeeded();
-    if (!desc_dirty_) return;
-    dkCmdBufBarrier(Cb(), DkBarrier_Full, DkInvalidateFlags_Descriptors | DkInvalidateFlags_Image);
+    full |= desc_dirty_;
+    dkCmdBufBarrier(Cb(), full ? DkBarrier_Full : DkBarrier_Fragments,
+                    DkInvalidateFlags_Image | (desc_dirty_ ? DkInvalidateFlags_Descriptors : 0));
     desc_dirty_ = false;
+    need_full_ = need_frag_ = false;
+    epoch_++;
+    (full ? barriers_full_ : barriers_frag_)++;
 }
 
-// the render targets; changing them orders the earlier draws before anything samples what they wrote
+// a draw about to run will sample this image: what wrote it since the last barrier must be done first
+void DekoBackend::Sample(Image& im) {
+    if (im.copied == epoch_) need_full_ = true;
+    else if (im.drawn == epoch_) need_frag_ = true;
+    if (draw_samples_n_ < std::size(draw_samples_)) draw_samples_[draw_samples_n_++] = &im;
+}
+
+// before every draw, clear or blit: the shader caches if code was loaded, one barrier for every hazard noted (what it
+// samples written since the last barrier; its targets sampled or copied into since then), then the epochs marked
+void DekoBackend::Barrier() {
+    core_.InvalidateCodeIfNeeded();
+    for (Image* t : {rend_color_, rend_depth_}) {
+        if (!t) continue;
+        if (t->copied == epoch_) need_full_ = true;
+        else if (t->sampled == epoch_) need_frag_ = true;
+    }
+    if (need_full_ || desc_dirty_) Hazard(true);
+    else if (need_frag_) Hazard(false);
+    for (uint32_t i = 0; i < draw_samples_n_; i++) draw_samples_[i]->sampled = epoch_;
+    draw_samples_n_ = 0;
+    if (rend_color_) rend_color_->drawn = epoch_;
+    if (rend_depth_) rend_depth_->drawn = epoch_;
+}
+
+// around the copy engine (uploads, copies, read-backs): a full barrier first when src was written, or dst written or
+// sampled, since the last one; afterwards dst counts as copied into
+void DekoBackend::BeforeCopy(Image* src, Image* dst) {
+    if (!core_.WorkOpen()) BeginWork();
+    bool hazard = src && (src->drawn == epoch_ || src->copied == epoch_);
+    hazard |= dst && (dst->drawn == epoch_ || dst->copied == epoch_ || dst->sampled == epoch_);
+    if (hazard) Hazard(true);
+}
+
+void DekoBackend::AfterCopy(Image& dst) { dst.copied = epoch_; }
+
+// the render targets: binding them is free, Barrier orders what they need
 void DekoBackend::BeginRender(Image* color, Image* depth) {
     if (!core_.WorkOpen()) BeginWork();
     if (rendering_ && color == rend_color_ && depth == rend_depth_) return;
-    Hazard(false);
     DkImageView cv, dv;
     if (color) View(*color, cv, true);
     if (depth) View(*depth, dv, true);
@@ -948,6 +994,7 @@ Target* DekoBackend::EnsureTarget(const Surface& s, bool depth) {
     ref = std::move(t);
     // a new target starts cleared
     BeginRender(depth ? nullptr : &ref.img, depth ? &ref.img : nullptr);
+    Barrier();
     SetScissor(0, 0, int32_t(ref.w), int32_t(ref.h));
     if (depth) dkCmdBufClearDepthStencil(Cb(), true, 1.0f, 0xFF, 0);
     else dkCmdBufClearColorFloat(Cb(), 0, DkColorMask_RGBA, 0, 0, 0, 0);
@@ -960,12 +1007,13 @@ bool DekoBackend::PixelImage(Image& im, const std::vector<uint8_t>& px, uint32_t
     Upload u = Reserve(w * h * 4, 256);
     if (!u) return false;
     for (uint32_t y = 0; y < h; y++) std::memcpy(u.cpu + size_t(y) * w * 4, &px[size_t(y) * pitch], w * 4);
+    BeforeCopy(nullptr, &im);
     DkImageView v;
     View(im, v);
     const DkCopyBuf src = {u.gpu, 0, 0};
     const DkImageRect r = {0, 0, 0, w, h, 1};
     dkCmdBufCopyBufferToImage(Cb(), &src, &v, &r, 0);
-    Hazard(true);
+    AfterCopy(im);
     return true;
 }
 
@@ -1002,7 +1050,9 @@ void DekoBackend::Blit(Image& dst, int32_t x, int32_t y, uint32_t w, uint32_t h,
                   float(o.taps), o.mul};
     Upload cb = Constants(c, sizeof(c));
     BeginRender(&dst, nullptr);
-    FlushDescriptors();
+    Sample(src);
+    Sample(lut_);
+    Barrier();
     DkCmdBuf cmd = Cb();
     const DkShader* pair[] = {vs, ps};
     dkCmdBufBindShaders(cmd, DkStageFlag_GraphicsMask, pair, 2);
@@ -1044,13 +1094,13 @@ void DekoBackend::Blit(Image& dst, int32_t x, int32_t y, uint32_t w, uint32_t h,
 
 Image* DekoBackend::Feedback(Target& t) {
     if (!t.fb && !CreateImage(t.fb, t.img.fmt, t.w, t.h, 1, 1, 1, false)) return nullptr;
-    Hazard(true);
+    BeforeCopy(&t.img, &t.fb);
     DkImageView sv, dv;
     View(t.img, sv, true);
     View(t.fb, dv, true);
     const DkImageRect r = {0, 0, 0, t.w, t.h, 1};
     dkCmdBufCopyImage(Cb(), &sv, &r, &dv, &r, 0);
-    Hazard(true);
+    AfterCopy(t.fb);
     return &t.fb;
 }
 
@@ -1069,7 +1119,8 @@ bool DekoBackend::DepthCopy(const State& s) {
     const DkShader* ps = Module(kDepthHlsl, "psmain", vkshader::Stage::Pixel, hp);
     if (!vs || !ps) return false;
     BeginRender(nullptr, &dst.img);
-    FlushDescriptors();
+    Sample(src.img);
+    Barrier();
     DkCmdBuf cmd = Cb();
     const DkShader* pair[] = {vs, ps};
     dkCmdBufBindShaders(cmd, DkStageFlag_GraphicsMask, pair, 2);
@@ -1117,7 +1168,7 @@ Image* DekoBackend::CopySource(Target& t, Image& down) {
 
 // an image's pixels into a CPU-cached block, rows packed (recorded; the caller submits and waits)
 void DekoBackend::CopyToBuffer(Image& im, uint32_t w, uint32_t h, DkMemBlock block) {
-    Hazard(true);
+    BeforeCopy(&im, nullptr);
     DkImageView v;
     View(im, v, true);
     const DkImageRect r = {0, 0, 0, w, h, 1};
@@ -1165,9 +1216,11 @@ uint32_t DekoBackend::BindTargetTexture(const State& s, int stage, const Texture
     stages.fmt[stage] = t.img.fmt;
     if (feedback) {
         Image* fb = Feedback(t);
+        stage_img_[stage] = fb;
         return fb ? fb->desc : 0;
     }
     if (t.depth) info.shadow = ShadowDepthKind(d.format);
+    stage_img_[stage] = &t.img;
     return t.img.desc;
 }
 
@@ -1200,6 +1253,7 @@ bool DekoBackend::CreateTexture(Tex& tx, const TextureDesc& d, const FormatInfo&
 
 void DekoBackend::UploadTexture(Tex& tx, const TextureDesc& d, const FormatInfo& fi, const uint8_t* p,
                                 const uint32_t* colours) {
+    BeforeCopy(nullptr, &tx.img);
     uint32_t faces = d.cube ? 6 : 1;
     std::vector<uint8_t> px;
     bool bc = fi.compressed;
@@ -1234,7 +1288,7 @@ void DekoBackend::UploadTexture(Tex& tx, const TextureDesc& d, const FormatInfo&
             const DkImageRect r = {0, 0, 0, mw, mh, md};
             dkCmdBufCopyBufferToImage(Cb(), &src, &v, &r, 0);
         }
-    Hazard(true);
+    AfterCopy(tx.img);
 }
 
 uint32_t DekoBackend::BindGuestTexture(const State& s, int stage, const TextureDesc& d, const FormatInfo& fi,
@@ -1259,12 +1313,14 @@ uint32_t DekoBackend::BindGuestTexture(const State& s, int stage, const TextureD
     if (fi.depth) info.shadow = ShadowDepthKind(d.format);
     stages.fmt[stage] = t.fmt;
     stages.levels[stage] = t.levels;
+    stage_img_[stage] = &t.img;
     return t.img.desc;
 }
 
 uint32_t DekoBackend::BindTexture(const State& s, int stage, DrawTextures& stages) {
     TexInfo& info = stages.info[stage];
     info = {};
+    stage_img_[stage] = nullptr;
     stages.rt[stage] = false;
     stages.k[stage] = 1;
     stages.wide[stage] = 0;
@@ -1460,7 +1516,9 @@ void DekoBackend::Draw(const State& s, uint32_t prim, uint32_t start, uint32_t c
     phase(kPhSets);
 
     BeginRender(draw_rt_ ? &draw_rt_->img : nullptr, draw_ds_ ? &draw_ds_->img : nullptr);
-    FlushDescriptors();
+    for (Image* im : stage_img_)
+        if (im) Sample(*im);
+    Barrier();
     if (draw_rt_) draw_rt_->drawn = true;
     if (draw_ds_) draw_ds_->drawn = true;
     DkCmdBuf cmd = Cb();
@@ -1530,6 +1588,7 @@ void DekoBackend::ClearTarget(Target& t, const State& s, uint32_t count, const u
         bool cz = flags & kClearZ, cs = flags & kClearStencil;
         if (!cz && !cs) return;
         BeginRender(nullptr, &t.img);
+        Barrier();
         for (const R& r : rs) {
             SetScissor(r.l, r.t, r.r, r.b);
             dkCmdBufClearDepthStencil(Cb(), cz, std::clamp(z, 0.0f, 1.0f), cs ? 0xFF : 0, uint8_t(stencil));
@@ -1539,6 +1598,7 @@ void DekoBackend::ClearTarget(Target& t, const State& s, uint32_t count, const u
         float c[4];
         Color(color, c);
         BeginRender(&t.img, nullptr);
+        Barrier();
         for (const R& r : rs) {
             SetScissor(r.l, r.t, r.r, r.b);
             dkCmdBufClearColorFloat(Cb(), 0, DkColorMask_RGBA, c[0], c[1], c[2], c[3]);
@@ -1569,7 +1629,7 @@ void DekoBackend::Copy(const Surface& src, const Surface& dst, uint32_t count, u
     Target* dst_t = EnsureTarget(dst, false);
     src_t = FindTarget(src, false);
     if (!dst_t || !src_t || src_t == dst_t) return;
-    Hazard(true);
+    BeforeCopy(&src_t->img, &dst_t->img);
     DkImageView sv, dv;
     View(src_t->img, sv, true);
     View(dst_t->img, dv, true);
@@ -1600,7 +1660,7 @@ void DekoBackend::Copy(const Surface& src, const Surface& dst, uint32_t count, u
         const DkImageRect dr = {dx, dy, 0, r - l, b - t, 1};
         dkCmdBufCopyImage(Cb(), &sv, &sr, &dv, &dr, 0);
     }
-    Hazard(true);
+    AfterCopy(dst_t->img);
     dst_t->drawn = true;
 }
 
@@ -1714,7 +1774,10 @@ void DekoBackend::EnsureSwapchain() {
 void DekoBackend::DrawFrame(Target* t, int image) {
     // the frame letterboxed to the game's aspect over black
     DkImage& sw = swapchain_.Image(image);
-    Hazard(false);
+    rendering_ = false;
+    rend_color_ = rend_depth_ = nullptr;
+    if (t) Sample(t->img);
+    Barrier();
     DkImageView v;
     dkImageViewDefaults(&v, &sw);
     dkCmdBufBindRenderTarget(Cb(), &v, nullptr);
@@ -1733,7 +1796,7 @@ void DekoBackend::DrawFrame(Target* t, int image) {
     Upload cb = Constants(c, sizeof(c));
     // the upload may have ended the slot: the swapchain image bound again
     dkCmdBufBindRenderTarget(Cb(), &v, nullptr);
-    FlushDescriptors();
+    Barrier();
     DkCmdBuf cmd = Cb();
     const DkShader* pair[] = {vs, ps};
     dkCmdBufBindShaders(cmd, DkStageFlag_GraphicsMask, pair, 2);
@@ -1777,10 +1840,11 @@ void DekoBackend::UploadGammaRamp() {
     gamma_ = !identity;
     DkImageView v;
     View(lut_, v);
+    BeforeCopy(nullptr, &lut_);
     const DkCopyBuf src = {u.gpu, 0, 0};
     const DkImageRect r = {0, 0, 0, 256, 1, 1};
     dkCmdBufCopyBufferToImage(Cb(), &src, &v, &r, 0);
-    Hazard(true);
+    AfterCopy(lut_);
 }
 
 void DekoBackend::ReleaseOldTextures() {
@@ -1845,13 +1909,17 @@ void DekoBackend::Present(const Surface& front) {
     if (t && gpu::g_screenshot.exchange(false)) SaveShot(*t);
     if (ramp_dirty_) UploadGammaRamp();
     EnsureSwapchain();
+    // the frame's draws go to the GPU before the acquire, which makes the queue wait for the screen's image: the GPU
+    // works on them meanwhile. The slot's GPU time ends here, without that wait.
+    uint32_t slot = uint32_t(work_ % kSlots);
+    dkCmdBufReportCounter(Cb(), DkCounter_Timestamp, core_.QueriesGpu() + slot * 32 + 16);
+    core_.SubmitPartial();
+    core_.BindDescriptors();
     uint64_t ta = TickNs();
     int image = swapchain_.Acquire();
     phase_ns_[kPhAcquire] += TickNs() - ta;
     DrawFrame(t, image);
     uint64_t tp = TickNs();
-    uint32_t slot = uint32_t(work_ % kSlots);
-    dkCmdBufReportCounter(Cb(), DkCounter_Timestamp, core_.QueriesGpu() + slot * 32 + 16);
     core_.EndWork();
     swapchain_.Present(image);
     phase_ns_[kPhPresent] += TickNs() - tp;
@@ -1910,10 +1978,13 @@ void DekoBackend::LogPerf() {
     double reused = const_reused_ + const_uploaded_ ? 100.0 * double(const_reused_) / double(const_reused_ + const_uploaded_) : 0;
     const_reused_ = const_uploaded_ = 0;
     LOGR("perf: rt ms a frame: assemble %.2f, shaders %.2f, bind %.2f, upload %.2f, samplers %.2f, record %.2f; "
-         "acquire %.2f, next slot %.2f, present %.2f; constants reused %.0f%%; %llu shaders compiled (%.0f ms)",
+         "acquire %.2f, next slot %.2f, present %.2f; constants reused %.0f%%; %llu shaders compiled (%.0f ms); "
+         "barriers a frame: %.1f full, %.1f fragment",
          ph[kPhAssemble], ph[kPhShaders], ph[kPhPipeline], ph[kPhUpload], ph[kPhSets], ph[kPhRecord], ph[kPhAcquire],
-         ph[kPhReset], ph[kPhPresent], reused, (unsigned long long)compiles_, compile_ns_ / 1e6);
+         ph[kPhReset], ph[kPhPresent], reused, (unsigned long long)compiles_, compile_ns_ / 1e6, barriers_full_ / n,
+         barriers_frag_ / n);
     compiles_ = compile_ns_ = 0;
+    barriers_full_ = barriers_frag_ = 0;
 }
 
 }  // namespace
