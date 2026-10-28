@@ -13,13 +13,23 @@
 
 The game's x86 code is translated to C++ and built as a native Switch program. A runtime stands in for the Xbox
 kernel, its Direct3D 8 (drawn with **deko3d**, the Switch's own graphics API, or with Vulkan/NVK) and its audio. It
-starts from maddog847's **MVP05 XBE Recomp** Windows port, TGP482's
+starts from maddog847's **[MVP05 XBE Recomp](https://github.com/maddog847/MVP-Baseball-2005-XBERecomp)** Windows port, TGP482's
 **[XboxXBE-Recomp](https://github.com/TGP482/XboxXBE-Recomp)** recompiler and the Switch layer of
 **[BLACK-NX-PORT](https://github.com/gerisson1996/BLACK-NX-PORT)**.
 
-> [!IMPORTANT]
-> **No game data is included.** You need your own copy of *MVP Baseball 2005* for the original Xbox
-> (title ID `45410056`).
+> [!NOTE]
+> You need your own copy of *MVP Baseball 2005* for the original Xbox (title ID `45410056`): the disc image (`.iso`)
+> or the extracted disc (the folder with `default.xbe`). No game files are in this repository, and none are
+> distributed.
+
+> [!TIP]
+> **Installer page: [xsaja.github.io/mvp-nx](https://xsaja.github.io/mvp-nx/)**. Pick your disc, get the SD card
+> package. Everything runs in your browser. See [Installation](#installation).
+
+> [!CAUTION]
+> **The first time you start the game**, it compiles its shaders for deko3d, which takes a few seconds. They are
+> saved in `shadercache/`, and later starts are quick. An effect the game has never shown before can still stutter
+> once, the first time it appears.
 
 ## What works
 
@@ -58,8 +68,7 @@ xiso) or the extracted disc (the folder with `default.xbe`).
 
    Applet mode (the Album) does not have enough memory.
 
-The first launch compiles the shaders (a few seconds); they are kept in `sdmc:/switch/mvp05/shadercache/`. Saves go to
-`sdmc:/switch/mvp05/hdd/`.
+Saves go to `sdmc:/switch/mvp05/hdd/`.
 
 **Updating:** replace `mvp05.nro` and `mvp05-settings.toml`, or run the installer again. Profiles and saves are kept.
 
@@ -161,7 +170,15 @@ The web installer is in `installer/`. To test it locally:
 
 ## Credits
 
-- **MVP05 XBE Recomp / Title-ID Update:** maddog847.
+- **[ChanseyIsTheBest](https://github.com/ChanseyIsTheBest)**, a big thank you. This port leans on their work all
+  the way through:
+  - the deko3d renderer guide of [sa2-nx](https://github.com/ChanseyIsTheBest/sa2-nx), and the uam shader compiler
+    packaged as a library there;
+  - the notes on profiling and optimizing recompiled code in
+    [bejeweled3-nx](https://github.com/ChanseyIsTheBest/bejeweled3-nx);
+  - the [Ryujinx fork](https://github.com/ChanseyIsTheBest/ryujinx) used to test every build before it reached a
+    console.
+- **[MVP05 XBE Recomp](https://github.com/maddog847/MVP-Baseball-2005-XBERecomp)** (the Windows port this one starts from, with its Title-ID Update): maddog847.
 - **[XboxXBE-Recomp](https://github.com/TGP482/XboxXBE-Recomp)** (the recompiler and SDK): TGP482.
 - **[BLACK-NX-PORT](https://github.com/gerisson1996/BLACK-NX-PORT)** (base of the Switch layer): gerisson1996.
 - **[Black-Android](https://github.com/RanggaCasper/Black-Android)** (where the Vulkan backend comes from): RanggaCasper.
@@ -169,14 +186,12 @@ The web installer is in `installer/`. To test it locally:
   - [deko3d](https://github.com/devkitPro/deko3d) and [uam](https://github.com/devkitPro/uam), by fincs.
   - The uam patches by SwitchWakerHD.
   - [SPIRV-Cross](https://github.com/KhronosGroup/SPIRV-Cross), by the Khronos Group.
-  - The deko3d guides of [sa2-nx](https://github.com/ChanseyIsTheBest/sa2-nx) (ChanseyIsTheBest) and
-    [NFSMW-NX](https://github.com/StevensND/nfsmw-nx) (StevensND).
+  - The deko3d guide of [NFSMW-NX](https://github.com/StevensND/nfsmw-nx), by StevensND.
 - **NVK:**
   - [mesa-switch](https://github.com/danfromtico/mesa-switch), by danfromtico.
-  - The Mesa 26.2.4 build, by NaGaa95, shared by StevensND.
+  - The Mesa 26.2.4 build, by NaGaa95.
   - The Mesa authors.
-- **Profiling:** the console profiler is adapted from the one in R-drg's [defjam-sw](https://github.com/R-drg/defjam-sw);
-  the approach follows ChanseyIsTheBest's [bejeweled3-nx](https://github.com/ChanseyIsTheBest/bejeweled3-nx) notes.
+- **Profiling:** the console profiler is adapted from the one in R-drg's [defjam-sw](https://github.com/R-drg/defjam-sw).
 - **Overlays:**
   - [SaltyNX](https://github.com/masagrator/SaltyNX), by masagrator and shinyquagsire23.
   - The overlay guide of [NFSMW-NX](https://github.com/StevensND/nfsmw-nx), by StevensND.
@@ -185,6 +200,13 @@ The web installer is in `installer/`. To test it locally:
 - **Libraries:**
   - [libnx](https://github.com/switchbrew/libnx) and [devkitPro](https://devkitpro.org).
   - glslang, Dear ImGui, toml++, SDL, Zydis, zstd, expat and zlib.
+
+## AI notice
+
+Was this port made with a lot of help from AI? Yes, no point hiding it: the recompiled code, the Switch layer, the
+deko3d renderer and every optimization were worked out together with an AI, one console log at a time. Is the game
+itself worth it? Absolutely. MVP Baseball 2005 is still more fun than any MLB The Show of the last ten years, and
+we will not be taking questions.
 
 ## License
 

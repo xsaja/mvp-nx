@@ -115,7 +115,7 @@ def main():
         return p.read_text(encoding='utf-8', errors='replace').replace('\r\n', '\n')
 
     nro = [
-        ('MVP05 XBE Recomp, Title-ID Update Beta 3 (maddog847): SDK-LICENSE.txt as shipped in its package',
+        ('MVP05 XBE Recomp, Title-ID Update Beta 3 (maddog847, https://github.com/maddog847/MVP-Baseball-2005-XBERecomp): SDK-LICENSE.txt as shipped in its package',
          file(ROOT / 'SDK-LICENSE.txt')),
         ('MVP05 XBE Recomp: THIRD_PARTY.txt as shipped in its package', file(ROOT / 'THIRD_PARTY.txt')),
         ('XboxXBE-Recomp SDK (TGP482), https://github.com/TGP482/XboxXBE-Recomp', file(ROOT / 'sdk/LICENSE')),
@@ -125,7 +125,7 @@ def main():
         ('Dear ImGui (Omar Cornut)', file(ROOT / 'third_party/imgui/LICENSE.txt')),
         ('toml++ (Mark Gillard)', file(ROOT / 'third_party/tomlplusplus/LICENSE')),
         ('Vulkan-Headers (The Khronos Group)', file(ROOT / 'third_party/Vulkan-Headers/LICENSE.md')),
-        ('Mesa / NVK / NAK: mesa-switch (danfromtico), 26.2.4 build by NaGaa95, shared by StevensND - license.rst',
+        ('Mesa / NVK / NAK: mesa-switch (danfromtico), 26.2.4 build by NaGaa95 - license.rst',
          file(mesa / 'docs/license.rst')),
         ('Mesa: MIT', file(mesa / 'licenses/MIT')),
         ('Mesa: Apache-2.0 (parts of NAK and its Rust crates)', file(mesa / 'licenses/Apache-2.0')),

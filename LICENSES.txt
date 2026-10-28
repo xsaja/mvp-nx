@@ -14,7 +14,7 @@ published there. The parts below keep their own licenses.
 Below: the licenses of everything mvp05.nro carries, then of what only the PC builds and the tools use.
 
 
-==================== MVP05 XBE Recomp, Title-ID Update Beta 3 (maddog847): SDK-LICENSE.txt as shipped in its package ====================
+==================== MVP05 XBE Recomp, Title-ID Update Beta 3 (maddog847, https://github.com/maddog847/MVP-Baseball-2005-XBERecomp): SDK-LICENSE.txt as shipped in its package ====================
 
 MIT License
 
@@ -1243,7 +1243,7 @@ Full license text of these licenses is available at:
   * MIT: https://opensource.org/licenses/MIT
 
 
-==================== Mesa / NVK / NAK: mesa-switch (danfromtico), 26.2.4 build by NaGaa95, shared by StevensND - license.rst ====================
+==================== Mesa / NVK / NAK: mesa-switch (danfromtico), 26.2.4 build by NaGaa95 - license.rst ====================
 
 License and Copyright
 =====================

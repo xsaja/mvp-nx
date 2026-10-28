@@ -15,6 +15,7 @@ const REPO = 'https://github.com/xsaja/mvp-nx';
 const README_ES = `${REPO}#installation`;
 const README_EN = `${REPO}#installation`;
 const TGP = A('https://github.com/TGP482/XboxXBE-Recomp', 'XboxXBE-Recomp');
+const MVP05 = A('https://github.com/maddog847/MVP-Baseball-2005-XBERecomp', 'MVP05 XBE Recomp');
 const BLACKNX = A('https://github.com/gerisson1996/BLACK-NX-PORT', 'BLACK-NX-PORT');
 const MESA = A('https://github.com/danfromtico/mesa-switch', 'mesa-switch');
 const LIBNX = A('https://github.com/switchbrew/libnx', 'libnx');
@@ -81,8 +82,8 @@ const TEXTS = {
     sourceCode: 'Código fuente',
     installerSource: 'Código del instalador',
     credits:
-      `Port para Switch: xsaja. Hecho sobre MVP05 XBE Recomp de maddog847, el recompilador ${TGP} de TGP482 y la capa ` +
-      `de Switch de ${BLACKNX} (gerisson1996). Funciona con ${LIBNX}, ${DKP} y NVK (${MESA}). Esta página está ` +
+      `Port para Switch: xsaja. Hecho sobre ${MVP05} de maddog847, el recompilador ${TGP} de TGP482 y la capa ` +
+      `de Switch de ${BLACKNX} (gerisson1996). Funciona con ${LIBNX}, ${DKP}, deko3d y NVK (${MESA}). Esta página está ` +
       `adaptada de ${DEFJAM} (R-drg), que a su vez viene de ${NFSMW} de StevensND.`,
     legal:
       'MVP Baseball 2005 © 2005 Electronic Arts Inc. MLB y sus marcas pertenecen a sus dueños. mvp-nx es un proyecto no oficial hecho por aficionados, sin relación con Electronic Arts, Major League Baseball, la MLBPA, Nintendo ni Microsoft. Nintendo Switch es una marca de Nintendo; Xbox es una marca de Microsoft. Este sitio no aloja ni reparte imágenes de disco ni datos del juego: tu imagen o carpeta se lee solo dentro de tu navegador, nunca se sube, y sus archivos se copian directamente al zip que se guarda en tu ordenador. Necesitas tu propia copia del juego, obtenida legalmente. La portada pertenece a sus dueños.',
@@ -145,8 +146,8 @@ const TEXTS = {
     sourceCode: 'Source code',
     installerSource: 'Installer source',
     credits:
-      `Switch port by xsaja. Built on maddog847's MVP05 XBE Recomp, TGP482's ${TGP} recompiler and the Switch layer of ` +
-      `${BLACKNX} (gerisson1996). Runs on ${LIBNX}, ${DKP} and NVK (${MESA}). This page is adapted from ${DEFJAM} ` +
+      `Switch port by xsaja. Built on maddog847's ${MVP05}, TGP482's ${TGP} recompiler and the Switch layer of ` +
+      `${BLACKNX} (gerisson1996). Runs on ${LIBNX}, ${DKP}, deko3d and NVK (${MESA}). This page is adapted from ${DEFJAM} ` +
       `(R-drg), itself from ${NFSMW} by StevensND.`,
     legal:
       'MVP Baseball 2005 © 2005 Electronic Arts Inc. MLB and its marks belong to their respective owners. mvp-nx is an unofficial fan project and is not affiliated with, endorsed or sponsored by Electronic Arts, Major League Baseball, the MLBPA, Nintendo or Microsoft. Nintendo Switch is a trademark of Nintendo; Xbox is a trademark of Microsoft. This site does not host or distribute disc images or game data: your disc image or game folder is read only inside your browser, is never uploaded, and its files are copied straight into the zip saved on your computer. You need your own legally obtained copy of the game. The cover art belongs to its respective owners.',
