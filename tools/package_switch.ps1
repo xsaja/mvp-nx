@@ -10,9 +10,9 @@ Remove-Item -Recurse -Force (Join-Path $root 'switch_sd') -ErrorAction SilentlyC
 New-Item -ItemType Directory -Force (Join-Path $out 'game') | Out-Null
 Copy-Item $nro $out
 Copy-Item (Join-Path $root 'switch\mvp05-settings.toml') $out
-Set-Content (Join-Path $out 'game\PON-AQUI-EL-JUEGO.txt') -Encoding utf8 -Value @'
-Copia aqui los archivos de tu disco de MVP Baseball 2005 (Xbox): default.xbe con todas sus carpetas,
-o una imagen .iso del disco. Son los mismos archivos que la carpeta assets del paquete de Windows.
+Set-Content (Join-Path $out 'game\PUT-THE-GAME-HERE.txt') -Encoding utf8 -Value @'
+Copy the files of your MVP Baseball 2005 disc (Xbox) here: default.xbe with all its folders,
+or an .iso image of the disc. They are the same files as the assets folder of the Windows package.
 '@
 
 # every license of what the NRO carries (tools/make_licenses.py writes it)

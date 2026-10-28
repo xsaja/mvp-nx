@@ -4,15 +4,16 @@
 // (R-drg), itself from the-simpsons-game-nx-installer and nfsmw-nx-installer
 // by StevensND (GPL-3.0).
 
+// English first: the page opens in English, Spanish is the second choice
 export const LANGUAGES = [
-  { code: 'es', name: 'Español', short: 'ES' },
   { code: 'en', name: 'English', short: 'EN' },
+  { code: 'es', name: 'Español', short: 'ES' },
 ];
 
 const A = (href, text) => `<a href="${href}" target="_blank" rel="noopener">${text}</a>`;
 const REPO = 'https://github.com/xsaja/mvp-nx';
-const README_ES = `${REPO}#instalación`;
-const README_EN = `${REPO}/blob/main/README.en.md#installation`;
+const README_ES = `${REPO}#installation`;
+const README_EN = `${REPO}#installation`;
 const TGP = A('https://github.com/TGP482/XboxXBE-Recomp', 'XboxXBE-Recomp');
 const BLACKNX = A('https://github.com/gerisson1996/BLACK-NX-PORT', 'BLACK-NX-PORT');
 const MESA = A('https://github.com/danfromtico/mesa-switch', 'mesa-switch');
@@ -152,36 +153,23 @@ const TEXTS = {
   },
 };
 
-let current = 'es';
+let current = 'en';
 
 export function setLanguage(code) {
-  current = TEXTS[code] ? code : 'es';
+  current = TEXTS[code] ? code : 'en';
 }
 
 export function getLanguage() {
   return current;
 }
 
-// The saved choice, else the first browser language we have, else Spanish.
+// The saved choice, else English.
 export function preferredLanguage(saved) {
-  if (saved && TEXTS[saved]) {
-    return saved;
-  }
-  const wanted = (typeof navigator !== 'undefined' && navigator.languages) || [];
-  for (const tag of wanted) {
-    if (TEXTS[tag]) {
-      return tag;
-    }
-    const base = tag.split('-')[0];
-    if (TEXTS[base]) {
-      return base;
-    }
-  }
-  return 'es';
+  return saved && TEXTS[saved] ? saved : 'en';
 }
 
 export function t(key, vars = {}) {
-  const text = (TEXTS[current] && TEXTS[current][key]) ?? TEXTS.es[key] ?? key;
+  const text = (TEXTS[current] && TEXTS[current][key]) ?? TEXTS.en[key] ?? key;
   return text.replace(/\{(\w+)\}/g, (match, name) => (name in vars ? String(vars[name]) : match));
 }
 

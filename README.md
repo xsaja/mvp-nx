@@ -1,169 +1,196 @@
 <h1 align="center">mvp-nx</h1>
 
 <p align="center">
-  <b>MVP Baseball 2005</b> (Xbox, 2005) en <b>Nintendo Switch</b>,<br>
-  recompilado de forma estática a partir del ejecutable original de Xbox. No es un emulador.
+  <b>MVP Baseball 2005</b> (Xbox, 2005) on the <b>Nintendo Switch</b>,<br>
+  statically recompiled from the original Xbox executable — no emulator.
 </p>
 
 <p align="center">
-  <a href="https://xsaja.github.io/mvp-nx/"><b>Instalador</b></a> ·
+  <a href="https://xsaja.github.io/mvp-nx/"><b>Installer</b></a> ·
   <a href="https://github.com/xsaja/mvp-nx/releases"><b>Releases</b></a> ·
-  <a href="#créditos"><b>Créditos</b></a> ·
-  🇺🇸 <a href="README.en.md"><b>English</b></a>
+  <a href="#credits"><b>Credits</b></a>
 </p>
 
-El código x86 del juego se traduce a C++ y se compila como un programa nativo de Switch, con un runtime que sustituye
-al kernel de la Xbox, a su Direct3D 8 (sobre Vulkan/NVK) y a su audio. Parte del port de Windows
-**MVP05 XBE Recomp** de maddog847, del recompilador **[XboxXBE-Recomp](https://github.com/TGP482/XboxXBE-Recomp)** de
-TGP482 y de la capa de Switch de **[BLACK-NX-PORT](https://github.com/gerisson1996/BLACK-NX-PORT)**.
+The game's x86 code is translated to C++ and built as a native Switch program. A runtime stands in for the Xbox
+kernel, its Direct3D 8 (drawn with **deko3d**, the Switch's own graphics API, or with Vulkan/NVK) and its audio. It
+starts from maddog847's **MVP05 XBE Recomp** Windows port, TGP482's
+**[XboxXBE-Recomp](https://github.com/TGP482/XboxXBE-Recomp)** recompiler and the Switch layer of
+**[BLACK-NX-PORT](https://github.com/gerisson1996/BLACK-NX-PORT)**.
 
 > [!IMPORTANT]
-> **No incluye ningún dato del juego.** Necesitas tu propia copia de *MVP Baseball 2005* para Xbox original
+> **No game data is included.** You need your own copy of *MVP Baseball 2005* for the original Xbox
 > (title ID `45410056`).
 
-## Qué funciona
+## What works
 
-- Arranque, vídeos, menús, música y sonido.
-- Partidos de exhibición completos, probados en consola.
-- Límite de 60 fps por defecto: con deko3d, en portátil, el partido va casi siempre a 57–60 fps (53–56 en las
-  escenas más cargadas, 60 fijos con la CPU a 1785 MHz). Con `fps_cap = 30`, 30 fps totalmente estables.
-- 1280×720 en portátil y 1920×1080 en la base, con cambio automático.
-- Hasta 4 mandos, con vibración.
-- FPS y resolución en Status Monitor / Horizon OC Monitor, y modo portátil/base con ReverseNX-RT (necesitan SaltyNX).
+- Boot, movies, menus, music and sound.
+- Full exhibition games, tested on the console, handheld and docked. Profiles and saves load and save.
+- A 60 fps cap by default. With deko3d and the stock clocks, a game runs at about 58 fps (median), 55 or more 94% of
+  the time; the busiest scenes (the catcher's camera facing the stands) dip to 52–56. With the CPU at 1785 MHz, a
+  steady 60. With `fps_cap = 30`, a fully steady 30.
+- 1280×720 handheld and 1920×1080 docked, switching on its own.
+- Up to 4 controllers, with rumble.
+- FPS and resolution in Status Monitor / Horizon OC Monitor, and handheld/docked mode from ReverseNX-RT (these need
+  SaltyNX).
 
-No se ha jugado todo. Si algo falla, avisa con el log (ver [Problemas](#problemas)).
+Not everything has been played. If something breaks, report it with the log (see [Problems](#problems)).
 
-## Instalación
+## Installation
 
-Necesitas una Switch con **Atmosphère** y tu copia del juego: la imagen del disco (`.iso`, volcado completo o xiso) o
-el disco extraído (la carpeta con `default.xbe`).
+You need a Switch running **Atmosphère** and your own copy of the game: the disc image (`.iso`, a full dump or an
+xiso) or the extracted disc (the folder with `default.xbe`).
 
-1. Abre el **[instalador](https://xsaja.github.io/mvp-nx/)** en Chrome, Edge o Firefox desde un ordenador. Elige tu
-   imagen de disco o la carpeta del juego. La página comprueba que es el juego correcto y guarda **`mvp-nx.zip`**.
-   Todo pasa dentro de tu navegador: tus archivos nunca se suben.
-2. Descomprime el zip en la carpeta **`switch`** de la microSD. Queda así:
+1. On a computer, open the **[installer](https://xsaja.github.io/mvp-nx/)** in Chrome, Edge or Firefox, and choose
+   your disc image or game folder. It checks that the game is the right one and saves **`mvp-nx.zip`**. Everything
+   happens in your browser: your game files are never uploaded.
+2. Extract the zip into the **`switch`** folder of the microSD card. You get:
    ```
    sdmc:/switch/mvp05/
-   ├── mvp05.nro             el juego
-   ├── mvp05-settings.toml   los ajustes
+   ├── mvp05.nro             the game
+   ├── mvp05-settings.toml   settings
    ├── LICENSES.txt
-   └── game/                 los archivos de tu disco (default.xbe, data/, ...)
+   └── game/                 your disc's files (default.xbe, data/, ...)
    ```
-3. En la Switch, mantén **R** al abrir cualquier juego instalado para entrar en el Homebrew Menu en **modo título** y
-   abre **MVP Baseball 2005**. También vale abrirlo desde sphaira o con un forwarder. Desde el Álbum (modo applet) no
-   hay memoria suficiente.
+3. On the Switch, start **MVP Baseball 2005** in **title mode** in one of these ways:
+   - Hold **R** while starting any installed game to open the Homebrew Menu, then pick it.
+   - Start it from sphaira.
+   - Start it through a forwarder.
 
-Las partidas se guardan en `sdmc:/switch/mvp05/hdd/`.
+   Applet mode (the Album) does not have enough memory.
+
+The first launch compiles the shaders (a few seconds); they are kept in `sdmc:/switch/mvp05/shadercache/`. Saves go to
+`sdmc:/switch/mvp05/hdd/`.
+
+**Updating:** replace `mvp05.nro` and `mvp05-settings.toml`, or run the installer again. Profiles and saves are kept.
 
 <details>
-<summary>Instalarlo a mano</summary>
+<summary>Installing by hand</summary>
 
-Descarga `mvp05.nro`, `mvp05-settings.toml` y `LICENSES.txt` del
-[último release](https://github.com/xsaja/mvp-nx/releases/latest) en `sdmc:/switch/mvp05/`. Después copia todos los
-archivos del disco en `sdmc:/switch/mvp05/game/`, o pon ahí la `.iso`. Si puedes, copia con un lector de tarjetas: algunas
-herramientas MTP se saltan carpetas sin avisar.
+1. Download `mvp05.nro`, `mvp05-settings.toml` and `LICENSES.txt` from the
+   [latest release](https://github.com/xsaja/mvp-nx/releases/latest) into `sdmc:/switch/mvp05/`.
+2. Copy every file of the disc into `sdmc:/switch/mvp05/game/`, or put the `.iso` there.
+
+Copy with a card reader if you can: some MTP tools skip folders without saying so.
 </details>
 
-## Controles
+## Controls
 
-A/B/X/Y van **por posición**, como en un mando de Xbox, que es como MVP lanza a las bases (en los menús se acepta
-con B, el botón de abajo):
+A/B/X/Y map **by position**, as on an Xbox controller, which is how MVP throws to the bases (menus confirm with B, the
+bottom button):
 
-| Switch | Xbox | En defensa |
+| Switch | Xbox | On defense |
 |---|---|---|
-| B (abajo) | A | home |
-| A (derecha) | B | primera |
-| X (arriba) | Y | segunda |
-| Y (izquierda) | X | tercera |
-| L / R | gatillos L / R (los que muestra el juego) | |
-| ZL / ZR | blanco / negro | |
+| B (bottom) | A | home |
+| A (right) | B | first |
+| X (top) | Y | second |
+| Y (left) | X | third |
+| L / R | L / R triggers (as the game shows them) | |
+| ZL / ZR | white / black | |
 | + / − | Start / Back | |
 
-Con `buttons_by_name = true` en los ajustes, A/B/X/Y van por letra (A de Switch = A de Xbox).
+To map A/B/X/Y by letter instead (Switch A = Xbox A), set `buttons_by_name = true` in the settings.
 
-## Ajustes
+## Settings
 
-Están en `mvp05-settings.toml`, junto al NRO, explicados dentro del propio archivo. Los más útiles:
+The settings are in `mvp05-settings.toml`, next to the NRO. The file explains each one. The most useful:
 
-| Ajuste | Qué hace |
+| Setting | Effect |
 |---|---|
-| `fps_cap = 30` | 30 fps totalmente estables, en vez del límite de 60. |
-| `renderer = "vulkan"` | Vuelve al motor gráfico Vulkan (NVK) en vez de deko3d, si algo se ve mal. |
-| `render_percent = 75` | Resolución interna más baja, por si va lento. |
-| `cpu_mhz`, `gpu_mhz`, `mem_mhz` | Sube los relojes mientras se juega (topes oficiales: 1785, 921, 1600). Déjalos en 0 si usas Horizon OC o sys-clk. |
-| `buttons_by_name = true` | Botones por letra en vez de por posición. |
-| `saltynx = false` | Desactiva la conexión con los overlays. |
+| `fps_cap = 30` | A fully steady 30 fps instead of the 60 cap. |
+| `renderer = "vulkan"` | Uses the Vulkan (NVK) renderer instead of deko3d, if something looks wrong. |
+| `render_percent = 75` | Lowers the internal resolution, in case the game is slow. |
+| `cpu_mhz`, `gpu_mhz`, `mem_mhz` | Raises the clocks while the game runs (official caps: 1785, 921, 1600). `cpu_mhz = 1785` gives a steady 60 fps. Leave them at 0 if you use Horizon OC or sys-clk, and set the clocks in its profile instead. |
+| `buttons_by_name = true` | Maps the buttons by letter instead of by position. |
+| `saltynx = false` | Turns off the link with the console overlays. |
 
-## Problemas
+## Problems
 
-- El juego escribe `sdmc:/switch/mvp05/logs/mvp05.log`. Si se cierra con un error, adjunta también el informe de
-  `sdmc:/atmosphere/crash_reports/` en un [issue](https://github.com/xsaja/mvp-nx/issues), y cuenta qué estabas haciendo.
-- **Franjas naranjas** en la transición de fin de entrada: también pasan en el port de Windows.
-- La primera vez que aparece un efecto puede haber un tirón mientras se compila su shader; después queda en la caché.
-- En la base, Ultrahand no abre si el "tamaño de pantalla" de la consola está al 96 %: ponlo al 100 %.
-- No hay juego en red.
+- The game writes `sdmc:/switch/mvp05/logs/mvp05.log`. If it closes with an error, open an
+  [issue](https://github.com/xsaja/mvp-nx/issues) and attach the log, the report from
+  `sdmc:/atmosphere/crash_reports/`, and what you were doing.
+- **Orange bands** sometimes appear in the between-innings transition (team logo). The Windows port has them too.
+- The first time a new effect appears, the game may stutter once while its shader compiles. After that it is cached.
+- When docked, Ultrahand does not open while the console's "screen size" is at 96%. Set it to 100%.
+- There is no online play.
 
-## Compilar desde el código
+## Building from source
 
 <details>
-<summary>Windows (PC) y Nintendo Switch</summary>
+<summary>Windows (PC) and Nintendo Switch</summary>
 
-Todo se hace en Windows.
+Everything runs on Windows.
 
-1. **Herramientas:** Visual Studio 2026 con C++ y su componente Clang, CMake, Ninja y Python 3. Para la Switch: MSYS2
-   con [devkitPro](https://devkitpro.org/wiki/Getting_Started) (`switch-dev`, `switch-zlib`, `switch-libzstd`,
-   `switch-libexpat`).
-2. **NVK:** compila [mesa-switch](https://github.com/danfromtico/mesa-switch) como librerías estáticas, o usa un SDK
-   ya compilado, y haz que `nvk_sdk/` apunte a su carpeta `opt/devkitpro/portlibs/switch`.
-3. **El juego:** pon tu `default.xbe` y sus carpetas en `game/assets/`. Nunca subas esos archivos ni `game/generated/`.
-4. **Recompilar:** `tools\build_pc.cmd` compila el recompilador, traduce el xbe a `game/generated/game/` y crea
-   `MVP05-vk.exe` y `MVP05-d3d12.exe` para probar en PC.
-5. **El NRO:** en la terminal de MSYS2, `JOBS=8 switch/build.sh` → `build-switch/mvp05.nro`. Con `VERBOSE=ON` el log
-   sale detallado. Si existe `switch/icon.jpg` (256×256), se usa como icono.
-6. **Paquete para la SD:** `tools\package_switch.ps1` → `switch_sd/switch/mvp05/`. Si cambia alguna licencia, ejecuta
-   antes `python tools/make_licenses.py`.
+1. **Install the tools.**
+   - For the PC build: Visual Studio 2026 with C++ and its Clang component, CMake, Ninja and Python 3.
+   - For the Switch build: MSYS2 with [devkitPro](https://devkitpro.org/wiki/Getting_Started) (`switch-dev`,
+     `switch-zlib`, `switch-libzstd`, `switch-libexpat`, `deko3d`).
+2. **Get NVK** (for the Vulkan renderer). Build [mesa-switch](https://github.com/danfromtico/mesa-switch) as static
+   libraries, or use a prebuilt SDK. Then point `nvk_sdk/` at its `opt/devkitpro/portlibs/switch` folder.
+3. **Add the game.** Put your `default.xbe` and its folders in `game/assets/`. Never commit those files or
+   `game/generated/`.
+4. **Recompile.** Run `tools\build_pc.cmd`. It builds the recompiler, translates the xbe into `game/generated/game/`,
+   and builds `MVP05-vk.exe` and `MVP05-d3d12.exe` for testing on the PC.
+5. **Build the NRO.** In the MSYS2 shell, run `JOBS=8 switch/build.sh`. The result is `build-switch/mvp05.nro`.
+   - `VERBOSE=ON` makes the log detailed.
+   - A `switch/icon.jpg` (256×256), if present, becomes the icon.
+6. **Make the SD package.** Run `tools\package_switch.ps1`, which writes `switch_sd/switch/mvp05/`. If a license
+   changed, run `python tools/make_licenses.py` first.
 
-El instalador web está en `installer/`. Para probarlo en local: copia `mvp05.nro`, `LICENSES.txt` y
-`switch/mvp05-settings.toml` en `installer/release/` y ejecuta `python installer/serve.py 8194 installer`.
+The web installer is in `installer/`. To test it locally:
+1. Copy `mvp05.nro`, `LICENSES.txt` and `switch/mvp05-settings.toml` into `installer/release/`.
+2. Run `python installer/serve.py 8194 installer`.
 </details>
 
-## Cómo está hecho
+## How it was made
 
-[docs/notas-tecnicas.md](docs/notas-tecnicas.md) explica las bases del port, los arreglos de MVP que se conservan, los
-fallos encontrados (y cómo), el trabajo de rendimiento y las herramientas de depuración.
+[docs/technical-notes.md](docs/technical-notes.md) covers:
+- what the port is built from;
+- the MVP fixes that were kept;
+- the bugs found, and how they were found;
+- the deko3d renderer and the performance work;
+- the debugging tools, including the console profiler.
 
-| Ruta | Qué es |
+| Path | What |
 |---|---|
-| `switch/` | Capa de Switch: arranque, ajustes, log, deko3d y Vulkan/NVK, audio, mandos, relojes, overlays |
-| `sdk/` | SDK de recompilación (de MVP y TGP482) con los parches para Switch |
-| `game/` | Configuración del recompilador y código propio del juego (hooks, mando por guion) |
-| `pc/` | Versiones de Windows para comparar Vulkan con D3D12 |
-| `installer/` | La página del instalador |
-| `tools/` | Compilación, paquete, licencias y comparación de capturas |
+| `switch/` | The Switch layer: startup, settings, log, deko3d and Vulkan/NVK, audio, controllers, clocks, overlays, profiler |
+| `sdk/` | The recompilation SDK (MVP's and TGP482's) with the Switch patches |
+| `game/` | The recompiler's configuration and the game's own code (hooks, scripted pad) |
+| `pc/` | Windows builds for comparing Vulkan with D3D12 |
+| `installer/` | The installer page |
+| `tools/` | Build, package, licenses, capture comparison and the profile report |
 
-## Créditos
+## Credits
 
 - **MVP05 XBE Recomp / Title-ID Update:** maddog847.
-- **[XboxXBE-Recomp](https://github.com/TGP482/XboxXBE-Recomp)** (el recompilador y el SDK): TGP482.
-- **[BLACK-NX-PORT](https://github.com/gerisson1996/BLACK-NX-PORT)** (la base de la capa de Switch): gerisson1996.
-- **[Black-Android](https://github.com/RanggaCasper/Black-Android)** (el backend Vulkan del que parte este): RanggaCasper.
+- **[XboxXBE-Recomp](https://github.com/TGP482/XboxXBE-Recomp)** (the recompiler and SDK): TGP482.
+- **[BLACK-NX-PORT](https://github.com/gerisson1996/BLACK-NX-PORT)** (base of the Switch layer): gerisson1996.
+- **[Black-Android](https://github.com/RanggaCasper/Black-Android)** (where the Vulkan backend comes from): RanggaCasper.
+- **deko3d:**
+  - [deko3d](https://github.com/devkitPro/deko3d) and [uam](https://github.com/devkitPro/uam), by fincs.
+  - The uam patches by SwitchWakerHD.
+  - [SPIRV-Cross](https://github.com/KhronosGroup/SPIRV-Cross), by the Khronos Group.
+  - The deko3d guides of [sa2-nx](https://github.com/ChanseyIsTheBest/sa2-nx) (ChanseyIsTheBest) and
+    [NFSMW-NX](https://github.com/StevensND/nfsmw-nx) (StevensND).
 - **NVK:**
-  - [mesa-switch](https://github.com/danfromtico/mesa-switch), de danfromtico.
-  - La build de Mesa 26.2.4, de NaGaa95, compartida por StevensND.
-  - Los autores de Mesa.
-- **Overlays:** [SaltyNX](https://github.com/masagrator/SaltyNX), de masagrator y shinyquagsire23. La guía de overlays de
-  [NFSMW-NX](https://github.com/StevensND/nfsmw-nx), de StevensND.
-- **Instalador:** adaptado de [defjam-sw-installer](https://github.com/R-drg/defjam-sw-installer), de R-drg, que a su
-  vez viene de [nfsmw-nx-installer](https://github.com/StevensND/nfsmw-nx-installer), de StevensND.
-- **Librerías:**
-  - [libnx](https://github.com/switchbrew/libnx) y [devkitPro](https://devkitpro.org).
-  - glslang, Dear ImGui, toml++, SDL, Zydis, zstd, expat y zlib.
+  - [mesa-switch](https://github.com/danfromtico/mesa-switch), by danfromtico.
+  - The Mesa 26.2.4 build, by NaGaa95, shared by StevensND.
+  - The Mesa authors.
+- **Profiling:** the console profiler is adapted from the one in R-drg's [defjam-sw](https://github.com/R-drg/defjam-sw);
+  the approach follows ChanseyIsTheBest's [bejeweled3-nx](https://github.com/ChanseyIsTheBest/bejeweled3-nx) notes.
+- **Overlays:**
+  - [SaltyNX](https://github.com/masagrator/SaltyNX), by masagrator and shinyquagsire23.
+  - The overlay guide of [NFSMW-NX](https://github.com/StevensND/nfsmw-nx), by StevensND.
+- **Installer:** adapted from R-drg's [defjam-sw-installer](https://github.com/R-drg/defjam-sw-installer), itself from
+  StevensND's [nfsmw-nx-installer](https://github.com/StevensND/nfsmw-nx-installer).
+- **Libraries:**
+  - [libnx](https://github.com/switchbrew/libnx) and [devkitPro](https://devkitpro.org).
+  - glslang, Dear ImGui, toml++, SDL, Zydis, zstd, expat and zlib.
 
-## Licencia
+## License
 
-El código de este repositorio se publica bajo la **GPL-3.0** ([LICENSE](LICENSE)). Las partes de terceros conservan su
-propia licencia; [LICENSES.txt](LICENSES.txt) las recoge todas.
+The code in this repository is released under the **GPL-3.0** ([LICENSE](LICENSE)). Third-party parts keep their own
+licenses, all collected in [LICENSES.txt](LICENSES.txt).
 
-<sub>MVP Baseball 2005 © 2005 Electronic Arts Inc. Este es un proyecto no oficial hecho por aficionados, sin relación
-con Electronic Arts, Major League Baseball, la MLBPA, Microsoft ni Nintendo. El NRO lleva código traducido del
-ejecutable del juego, pero ningún dato del juego: necesitas tu propia copia, obtenida legalmente.</sub>
+<sub>MVP Baseball 2005 © 2005 Electronic Arts Inc. This is an unofficial fan project, not affiliated with Electronic
+Arts, Major League Baseball, the MLBPA, Microsoft or Nintendo. The NRO contains code translated from the game's
+executable but no game data: you need your own legally obtained copy.</sub>

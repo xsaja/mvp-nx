@@ -76,6 +76,24 @@ ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CO
 THIS SOFTWARE.
 """
 
+DEKO3D = """deko3d (fincs), the Switch's native graphics API library (libdeko3d from devkitPro), zlib license:
+
+Copyright (C) 2018-2020 fincs
+
+This software is provided 'as-is', without any express or implied warranty. In no event will the authors be held
+liable for any damages arising from the use of this software.
+
+Permission is granted to anyone to use this software for any purpose, including commercial applications, and to alter
+it and redistribute it freely, subject to the following restrictions:
+
+1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If
+   you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not
+   required.
+2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original
+   software.
+3. This notice may not be removed or altered from any source distribution.
+"""
+
 TOOLCHAIN = """mvp05.nro is built with devkitA64 (GCC) and links its C and C++ runtimes: newlib (BSD-style licenses of its
 authors, https://sourceware.org/newlib/COPYING.NEWLIB) and libstdc++/libgcc, which are GPL-3.0 with the GCC Runtime
 Library Exception (https://www.gnu.org/licenses/gcc-exception-3.1.html). The exception lets a program compiled with GCC
@@ -112,6 +130,12 @@ def main():
         ('Mesa: MIT', file(mesa / 'licenses/MIT')),
         ('Mesa: Apache-2.0 (parts of NAK and its Rust crates)', file(mesa / 'licenses/Apache-2.0')),
         ('Mesa: BSL-1.0', file(mesa / 'licenses/BSL-1.0')),
+        ('deko3d (fincs)', DEKO3D),
+        ('uam 1.1.0 (fincs), shader compiler built in as a library, with the patches of SwitchWakerHD (third_party/uam)',
+         file(ROOT / 'third_party/uam/LICENSE')),
+        ('SPIRV-Cross (The Khronos Group and contributors), vulkan-sdk-1.4.363.0', file(ROOT / 'third_party/SPIRV-Cross/LICENSE')),
+        ('defjam-sw (R-drg), https://github.com/R-drg/defjam-sw: switch/profiler.cpp is adapted from its profiler',
+         file(ref / 'defjam-sw/LICENSE')),
         ('Zstandard (from devkitPro portlibs)', ZSTD),
         ('Expat (from devkitPro portlibs)', EXPAT),
         ('zlib (from devkitPro portlibs)', ZLIB),

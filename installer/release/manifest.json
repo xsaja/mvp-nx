@@ -1,12 +1,12 @@
 {
-  "version": "0.1.1",
+  "version": "0.2.0",
   "builds": [
     {
       "edition": "NTSC-U (title ID 45410056)",
       "xbe_sha256": "d7edcaa2e0a547fe2827613407dc36eb27c263a84f91f9d1276b232284ac595d",
       "xbe_size": 6643712,
       "nro": "mvp05.nro",
-      "nro_sha256": "31ec07b54d50dbc304190f10455bc0d02ee0531d46ba21c699cd0375043b17b4",
+      "nro_sha256": "7374b1615874972ea4d230701c817ef382eccf8ac83cf9a04397c898e70a45ec",
       "settings": "mvp05-settings.toml"
     }
   ]

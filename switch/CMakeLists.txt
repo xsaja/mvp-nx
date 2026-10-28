@@ -41,7 +41,7 @@ if(EXISTS ${GEN}/x86_func_mapping.cpp)
         list(APPEND GEN_SOURCES ${GEN}/x86_recomp.${i}.cpp)
     endforeach()
 endif()
-file(CONFIGURE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/build_info.h CONTENT "#define MVP_NX_BUILD \"switch-0.1.1\"\n")
+file(CONFIGURE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/build_info.h CONTENT "#define MVP_NX_BUILD \"switch-0.2.0\"\n")
 # the time of each build, in the log's first line (which NRO ran)
 add_custom_target(build_stamp COMMAND ${CMAKE_COMMAND} -DOUT=${CMAKE_CURRENT_BINARY_DIR}/build_stamp.h
     -P ${CMAKE_CURRENT_SOURCE_DIR}/stamp.cmake BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/build_stamp.h)
@@ -127,7 +127,7 @@ if(HAVE_GEN)
         -Wl,--end-group)
 
     nx_generate_nacp(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/mvp05.nacp
-        NAME "MVP Baseball 2005" AUTHOR "xsaja" VERSION "0.1.1")
+        NAME "MVP Baseball 2005" AUTHOR "xsaja" VERSION "0.2.0")
     set(ICON ${HOST}/icon.jpg)
     if(EXISTS ${ICON})
         nx_create_nro(mvp05 NACP ${CMAKE_CURRENT_BINARY_DIR}/mvp05.nacp ICON ${ICON})
