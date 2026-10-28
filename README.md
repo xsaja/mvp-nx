@@ -52,6 +52,13 @@ Taken on the console, with deko3d.
   </tr>
 </table>
 
+## AI notice
+
+Was this port made with a lot of help from AI? Yes, no point hiding it: the recompiled code, the Switch layer, the
+deko3d renderer and every optimization were worked out together with an AI, one console log at a time. Is the game
+itself worth it? Absolutely. MVP Baseball 2005 is still more fun than any MLB The Show of the last ten years, and
+we will not be taking questions.
+
 ## What works
 
 - Boot, movies, menus, music and sound.
@@ -224,13 +231,6 @@ The web installer is in `installer/`. To test it locally:
 - **Libraries:**
   - [libnx](https://github.com/switchbrew/libnx) and [devkitPro](https://devkitpro.org).
   - glslang, Dear ImGui, toml++, SDL, Zydis, zstd, expat and zlib.
-
-## AI notice
-
-Was this port made with a lot of help from AI? Yes, no point hiding it: the recompiled code, the Switch layer, the
-deko3d renderer and every optimization were worked out together with an AI, one console log at a time. Is the game
-itself worth it? Absolutely. MVP Baseball 2005 is still more fun than any MLB The Show of the last ten years, and
-we will not be taking questions.
 
 ## License
 
