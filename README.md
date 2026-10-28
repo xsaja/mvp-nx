@@ -1,4 +1,4 @@
-<p align="center"><img src="installer/cover.jpg" alt="MVP Baseball 2005" width="240"></p>
+<p align="center"><img src="docs/images/banner.png" alt="MVP Baseball 2005" width="100%"></p>
 
 <h1 align="center">mvp-nx</h1>
 
@@ -217,6 +217,8 @@ The web installer is in `installer/`. To test it locally:
 - **Overlays:**
   - [SaltyNX](https://github.com/masagrator/SaltyNX), by masagrator and shinyquagsire23.
   - The overlay guide of [NFSMW-NX](https://github.com/StevensND/nfsmw-nx), by StevensND.
+- **Banner:** made from the hero image by [David0Mario](https://www.steamgriddb.com/hero/55872) and the logo by
+  [hooperre](https://www.steamgriddb.com/logo/68424), both from SteamGridDB.
 - **Installer:** adapted from R-drg's [defjam-sw-installer](https://github.com/R-drg/defjam-sw-installer), itself from
   StevensND's [nfsmw-nx-installer](https://github.com/StevensND/nfsmw-nx-installer).
 - **Libraries:**
