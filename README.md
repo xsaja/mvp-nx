@@ -1,3 +1,5 @@
+<p align="center"><img src="installer/cover.jpg" alt="MVP Baseball 2005" width="240"></p>
+
 <h1 align="center">mvp-nx</h1>
 
 <p align="center">
@@ -30,6 +32,25 @@ starts from maddog847's **[MVP05 XBE Recomp](https://github.com/maddog847/MVP-Ba
 > **The first time you start the game**, it compiles its shaders for deko3d, which takes a few seconds. They are
 > saved in `shadercache/`, and later starts are quick. An effect the game has never shown before can still stutter
 > once, the first time it appears.
+
+## Screenshots
+
+Taken on the console, with deko3d.
+
+<table>
+  <tr>
+    <td><img src="docs/images/main-menu.jpg" alt="Main menu"></td>
+    <td><img src="docs/images/select-stadium.jpg" alt="Choosing Fenway Park"></td>
+  </tr>
+  <tr>
+    <td><img src="docs/images/fenway.jpg" alt="Fenway Park from above"></td>
+    <td><img src="docs/images/batting.jpg" alt="At bat, with the pitch diamond"></td>
+  </tr>
+  <tr>
+    <td><img src="docs/images/player-intro.jpg" alt="A batter's introduction"></td>
+    <td><img src="docs/images/pitcher.jpg" alt="The pitcher on the mound"></td>
+  </tr>
+</table>
 
 ## What works
 
