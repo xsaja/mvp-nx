@@ -64,7 +64,8 @@ xiso) or the extracted disc (the folder with `default.xbe`).
 3. On the Switch, start **MVP Baseball 2005** in **title mode** in one of these ways:
    - Hold **R** while starting any installed game to open the Homebrew Menu, then pick it.
    - Start it from sphaira.
-   - Start it through a forwarder.
+   - Start it through a forwarder. When you make one (sphaira can), pick the **39-bit** address space: the game
+     reserves a 4 GB block of addresses to stand in for the Xbox's memory, and 39 bits leaves it the most room.
 
    Applet mode (the Album) does not have enough memory.
 
