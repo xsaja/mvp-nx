@@ -47,7 +47,7 @@ Taken on the console, with deko3d.
     <td><img src="docs/images/batting.jpg" alt="At bat, with the pitch diamond"></td>
   </tr>
   <tr>
-    <td><img src="docs/images/player-intro.jpg" alt="A batter's introduction"></td>
+    <td><img src="docs/images/left-field.jpg" alt="Manny Ramirez in front of the Green Monster"></td>
     <td><img src="docs/images/pitcher.jpg" alt="The pitcher on the mound"></td>
   </tr>
 </table>
